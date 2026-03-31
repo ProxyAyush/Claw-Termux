@@ -28,7 +28,7 @@ setup_alias() {
     if ! grep -q "alias claw=" "$rc_file"; then
         echo "" >> "$rc_file"
         echo "# Claw-Termux Alias" >> "$rc_file"
-        echo "alias claw='python3 -m src.main'" >> "$rc_file"
+        echo "alias claw='PYTHONPATH=$HOME/Claw-Termux python3 -m src.main'" >> "$rc_file"
         echo "✅ Added 'claw' alias to $rc_file"
     fi
 }
@@ -46,5 +46,5 @@ echo "1. Run: source ~/.bashrc (or restart Termux)"
 echo "2. Run: claw setup"
 echo ""
 echo "Note: If you are using a non-standard shell,"
-echo "add this to your config: alias claw='python3 -m src.main'"
+echo "add this to your config: alias claw='PYTHONPATH=$HOME/Claw-Termux python3 -m src.main'"
 echo "========================================="
