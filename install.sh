@@ -16,7 +16,6 @@ pkg install python git curl -y
 echo "🐍 Installing Python libraries..."
 # We use --no-cache-dir to save space on mobile
 # We explicitly install httpx as it is our primary provider engine
-pip install --upgrade pip
 pip install httpx
 
 # 3. Setup Alias for easy access
