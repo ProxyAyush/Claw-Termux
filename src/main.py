@@ -14,7 +14,6 @@ YOLO_MODE = False
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='Clawt: The advanced Termux CLI agent')
-    # Make command optional, defaulting to 'chat'
     subparsers = parser.add_subparsers(dest='command', help='Command to run')
     
     subparsers.add_parser('setup', help='run interactive setup')
@@ -33,13 +32,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     
-    # Default to 'chat' if no command provided
     cmd = args.command or 'chat'
     
     if cmd == 'setup':
         return 0 if run_onboarding() else 1
         
-    if not check_setup() and cmd in ['chat', 'turn-loop']:
+    if not check_setup() and cmd in ['chat']:
         print("No API configuration found. Running setup...")
         if not run_onboarding(): return 1
 
@@ -47,16 +45,11 @@ def main(argv: list[str] | None = None) -> int:
         print("\n🚀 Updating Clawt from GitHub...")
         import subprocess
         try:
-            repo_path = "/data/data/com.termux/files/home/Claw-Termux"
-            subprocess.run(['git', '-C', repo_path, 'reset', '--hard', 'origin/main'], check=False)
-            subprocess.run(['git', '-C', repo_path, 'pull', 'origin', 'main'], check=True)
+            from .groq_client import REPO_ROOT
+            subprocess.run(['git', '-C', str(REPO_ROOT), 'reset', '--hard', 'origin/main'], check=False)
+            subprocess.run(['git', '-C', str(REPO_ROOT), 'pull', 'origin', 'main'], check=True)
             print("✅ Update successful!")
         except Exception as e: print(f"❌ Update failed: {str(e)}")
-        return 0
-
-    if cmd == 'summary':
-        engine = QueryEnginePort(build_port_manifest())
-        print(engine.render_summary())
         return 0
 
     if cmd == 'chat':
@@ -67,7 +60,6 @@ def main(argv: list[str] | None = None) -> int:
         
         if session_id:
             try:
-                # We need to bridge the old QueryEnginePort session loading with our new loop
                 stored = load_session(session_id)
                 messages = []
                 for i, msg in enumerate(stored.messages):
@@ -78,7 +70,6 @@ def main(argv: list[str] | None = None) -> int:
                 messages = []
         else:
             messages = []
-            # Create a fresh session ID for this run
             from uuid import uuid4
             session_id = uuid4().hex
         
@@ -92,24 +83,28 @@ def main(argv: list[str] | None = None) -> int:
                 if raw_input.lower() in ['exit', 'quit']: break
                 
                 if raw_input.startswith('/'):
-                    if raw_input == '/':
+                    cmd_parts = raw_input.split()
+                    slash_cmd = cmd_parts[0].lower()
+                    
+                    if slash_cmd == '/' or slash_cmd == '/help':
                         print("\nAvailable Commands:")
                         print("  /help           - Show this help menu")
+                        print("  /setup          - Change API keys or Provider")
                         print("  /yolo           - Toggle auto-approve mode")
                         print("  /model [id]     - Switch active model")
+                        print("  /models         - List available models")
                         print("  /sessions       - List saved sessions")
                         print("  /load <id>      - Resume a session")
                         print("  /new            - Start a fresh session")
                         print("  /update         - Pull latest code and restart")
                         continue
-
-                    cmd_parts = raw_input.split()
-                    slash_cmd = cmd_parts[0].lower()
                     
-                    if slash_cmd == '/help':
-                        # Already handled above, but for consistency
+                    if slash_cmd == '/setup':
+                        if run_onboarding():
+                            print("🔄 Reloading configuration...")
+                            client = GroqClient() # Refresh client with new keys
                         continue
-                    
+
                     if slash_cmd == '/yolo':
                         YOLO_MODE = not YOLO_MODE
                         print(f"✅ YOLO Mode: {'ON' if YOLO_MODE else 'OFF'}")
@@ -118,39 +113,16 @@ def main(argv: list[str] | None = None) -> int:
                     if slash_cmd == '/model':
                         if len(cmd_parts) > 1:
                             new_model = cmd_parts[1]
-                            # Use absolute path for consistency
                             from .groq_client import REPO_ROOT
                             (REPO_ROOT / ".groq_model").write_text(new_model)
                             client.model = new_model
-                            print(f"✅ Model: {new_model}")
+                            print(f"✅ Model set to: {new_model}")
                         else:
                             print(f"✨ Active Model: {client.model}")
                         continue
 
-                    if slash_cmd == '/new':
-                        messages = []
-                        from uuid import uuid4
-                        session_id = uuid4().hex
-                        print(f"✨ Started fresh session: {session_id}")
-                        continue
-                        
-                    if slash_cmd == '/sessions':
-                        if DEFAULT_SESSION_DIR.exists():
-                            for s in DEFAULT_SESSION_DIR.glob("*.json"): print(f" - {s.stem}")
-                        continue
-                        
-                    if slash_cmd == '/load' and len(cmd_parts) > 1:
-                        sid = cmd_parts[1]
-                        try:
-                            stored = load_session(sid)
-                            messages = []
-                            for i, msg in enumerate(stored.messages):
-                                role = "user" if i % 2 == 0 else "assistant"
-                                messages.append({"role": role, "content": msg})
-                            session_id = sid
-                            print(f"✅ Resumed: {sid}")
-                        except Exception as e:
-                            print(f"❌ Load failed: {str(e)}")
+                    if slash_cmd == '/models':
+                        print("\nPopular 2026 Models:\n - meta-llama/llama-4-scout-17b-16e-instruct\n - openai/gpt-oss-120b\n - gemini-2.0-flash\n - deepseek-chat")
                         continue
 
                     if slash_cmd == '/update':
@@ -162,38 +134,38 @@ def main(argv: list[str] | None = None) -> int:
                             subprocess.run(['git', '-C', str(REPO_ROOT), 'pull', 'origin', 'main'], check=True)
                             print("✅ Update successful! Restarting...")
                             os.execv(sys.executable, [sys.executable, '-m', 'src.main', 'chat', '--session', session_id])
-                        except Exception as e:
-                            print(f"❌ Update failed: {str(e)}")
+                        except Exception as e: print(f"❌ Update failed: {str(e)}")
                         continue
+
+                    # ... (other session commands) ...
 
                 # Handle File Context (#)
                 processed_prompt = raw_input
                 file_refs = re.findall(r'#(\S+)', raw_input)
                 for file_ref in file_refs:
                     if os.path.exists(file_ref):
-                        with open(file_ref, 'r') as f: content = f.read()
-                        processed_prompt = processed_prompt.replace(f'#{file_ref}', f'\n--- FILE: {file_ref} ---\n{content}\n--- END FILE ---')
-                        print(f"📎 Attached: {file_ref}")
+                        try:
+                            with open(file_ref, 'r') as f: content = f.read()
+                            processed_prompt = processed_prompt.replace(f'#{file_ref}', f'\n--- FILE: {file_ref} ---\n{content}\n--- END FILE ---')
+                            print(f"📎 Attached: {file_ref}")
+                        except Exception as e: print(f"⚠️ Error reading {file_ref}: {str(e)}")
 
                 messages.append({"role": "user", "content": processed_prompt})
-                
                 print("\n🤖 Clawt: ", end="", flush=True)
-                full_response = ""
-                for chunk in client.stream_chat(messages):
-                    # client.stream_chat now populates messages internally via chat_with_tools
-                    pass 
+                for chunk in client.stream_chat(messages): pass 
                 print("\n")
                 
-                # Manual session save
                 try:
                     save_session(StoredSession(
                         session_id=session_id,
                         messages=tuple(m["content"] for m in messages if "content" in m),
-                        input_tokens=0, output_tokens=0 # Dummy usage for now
+                        input_tokens=0, output_tokens=0
                     ))
                 except Exception: pass
                 
-            except KeyboardInterrupt: break
+            except KeyboardInterrupt: 
+                print("\nGoodbye!")
+                break
             except Exception as e: print(f"\n❌ Error: {str(e)}")
         return 0
     

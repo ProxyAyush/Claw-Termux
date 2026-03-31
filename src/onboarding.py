@@ -15,23 +15,24 @@ def run_onboarding() -> bool:
     providers = {
         "1": ("Groq", "https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
         "2": ("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-3.1-405b-instruct"),
-        "3": ("OpenAI", "https://api.openai.com/v1/chat/completions", "gpt-4o"),
+        "3": ("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.0-flash"),
         "4": ("DeepSeek", "https://api.deepseek.com/chat/completions", "deepseek-chat"),
-        "5": ("Custom", "", "")
+        "5": ("OpenAI", "https://api.openai.com/v1/chat/completions", "gpt-4o"),
+        "6": ("Custom", "", "")
     }
     
     print("\nSelect your LLM Provider:")
     for key, (name, _, _) in providers.items():
         print(f"{key}. {name}")
         
-    choice = input("\nChoice [1-5]: ")
+    choice = input("\nChoice [1-6]: ")
     if choice not in providers:
         print("Invalid choice. Defaulting to Groq.")
         choice = "1"
         
     provider_name, default_url, default_model = providers[choice]
     
-    if choice == "5":
+    if choice == "6":
         api_url = input("Enter your custom API URL: ")
         api_key = input("Enter your API Key: ")
         model = input("Enter model name: ")
