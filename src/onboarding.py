@@ -1,8 +1,12 @@
 import os
+from pathlib import Path
+
+# Absolute path to the repository root
+REPO_ROOT = Path("/data/data/com.termux/files/home/Claw-Termux")
 
 def check_setup() -> bool:
-    """Checks if the required API configuration files exist."""
-    return os.path.exists(".groq_api_key") and os.path.exists(".groq_api_url")
+    """Checks if the required API configuration files exist in the REPO_ROOT."""
+    return (REPO_ROOT / ".groq_api_key").exists() and (REPO_ROOT / ".groq_api_url").exists()
 
 def run_onboarding() -> bool:
     print("Welcome to Clawt (Claw-Termux) Setup!")
@@ -37,10 +41,12 @@ def run_onboarding() -> bool:
         model = default_model
         
     try:
-        with open(".groq_api_key", "w") as f: f.write(api_key)
-        with open(".groq_api_url", "w") as f: f.write(api_url)
-        with open(".groq_model", "w") as f: f.write(model)
-        with open(".groq_provider", "w") as f: f.write(provider_name)
+        # Save configs to REPO_ROOT using absolute paths
+        (REPO_ROOT / ".groq_api_key").write_text(api_key)
+        (REPO_ROOT / ".groq_api_url").write_text(api_url)
+        (REPO_ROOT / ".groq_model").write_text(model)
+        (REPO_ROOT / ".groq_provider").write_text(provider_name)
+        
         print(f"\n✅ Setup complete! Clawt is configured to use {provider_name}.")
         return True
     except Exception as e:
