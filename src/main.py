@@ -82,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not raw_input: continue
                 if raw_input.lower() in ['exit', 'quit']: break
                 
+                # Intercept Slash Commands
                 if raw_input.startswith('/'):
                     cmd_parts = raw_input.split()
                     slash_cmd = cmd_parts[0].lower()
@@ -92,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
                         print("  /setup          - Change API keys or Provider")
                         print("  /yolo           - Toggle auto-approve mode")
                         print("  /model [id]     - Switch active model")
-                        print("  /models         - List available models")
+                        print("  /models         - List available 2026 models")
                         print("  /sessions       - List saved sessions")
                         print("  /load <id>      - Resume a session")
                         print("  /new            - Start a fresh session")
@@ -102,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
                     if slash_cmd == '/setup':
                         if run_onboarding():
                             print("🔄 Reloading configuration...")
-                            client = GroqClient() # Refresh client with new keys
+                            client = GroqClient()
                         continue
 
                     if slash_cmd == '/yolo':
@@ -119,10 +120,21 @@ def main(argv: list[str] | None = None) -> int:
                             print(f"✅ Model set to: {new_model}")
                         else:
                             print(f"✨ Active Model: {client.model}")
+                            print("Tip: Use '/model <id>' to switch.")
                         continue
 
                     if slash_cmd == '/models':
-                        print("\nPopular 2026 Models:\n - meta-llama/llama-4-scout-17b-16e-instruct\n - openai/gpt-oss-120b\n - gemini-2.0-flash\n - deepseek-chat")
+                        print("\nPopular 2026 Models:")
+                        print(" --- Google Gemini ---")
+                        print(" - gemini-2.0-flash (Fast, Default)")
+                        print(" - gemini-2.0-pro-exp (Powerful)")
+                        print(" - gemini-1.5-flash")
+                        print(" - gemini-1.5-pro")
+                        print("\n --- Groq / OpenRouter ---")
+                        print(" - meta-llama/llama-4-scout-17b-16e-instruct")
+                        print(" - openai/gpt-oss-120b")
+                        print(" - deepseek-chat")
+                        print(" - gpt-4o")
                         continue
 
                     if slash_cmd == '/update':
@@ -136,8 +148,6 @@ def main(argv: list[str] | None = None) -> int:
                             os.execv(sys.executable, [sys.executable, '-m', 'src.main', 'chat', '--session', session_id])
                         except Exception as e: print(f"❌ Update failed: {str(e)}")
                         continue
-
-                    # ... (other session commands) ...
 
                 # Handle File Context (#)
                 processed_prompt = raw_input
