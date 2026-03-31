@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import re
 
 from .bootstrap_graph import build_bootstrap_graph
 from .command_graph import build_command_graph
@@ -112,18 +114,96 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == 'chat':
         engine = QueryEnginePort.from_workspace()
-        print("\n💬 Starting Claw-Termux Chat (Type 'exit' or 'quit' to stop)")
+        print("\n💬 Starting Claw-Termux Chat")
+        print("Type '/help' for commands, or 'exit' to stop.")
+        
         while True:
             try:
-                prompt = input("\n👤 You: ").strip()
-                if not prompt or prompt.lower() in ['exit', 'quit']:
+                raw_input = input("\n👤 You: ").strip()
+                if not raw_input:
+                    continue
+                
+                # Handle Exit
+                if raw_input.lower() in ['exit', 'quit']:
                     print("Goodbye!")
                     break
+                
+                # Handle Slash Commands
+                if raw_input.startswith('/'):
+                    parts = raw_input.split()
+                    cmd = parts[0].lower()
+                    
+                    if cmd == '/help':
+                        print("\nAvailable Commands:")
+                        print("  /help           - Show this help message")
+                        print("  /model [id]     - View or change the current model")
+                        print("  /models         - List available Groq models")
+                        print("  /clear          - Clear conversation history")
+                        print("  /summary        - Show session summary")
+                        print("  /reset          - Full reset of the engine")
+                        print("\nContext Referencing:")
+                        print("  #filename       - Include file content in your prompt")
+                        continue
+                    
+                    if cmd == '/model':
+                        if len(parts) > 1:
+                            new_model = parts[1]
+                            with open(".groq_model", "w") as f:
+                                f.write(new_model)
+                            engine.client.model = new_model
+                            print(f"Model updated to: {new_model}")
+                        else:
+                            print(f"Current model: {engine.client.model}")
+                        continue
+                    
+                    if cmd == '/models':
+                        models = [
+                            "llama-3.3-70b-versatile", "llama-3.1-8b-instant",
+                            "mixtral-8x7b-32768", "gemma2-9b-it",
+                            "deepseek-r1-distill-llama-70b", "qwen-2.5-32b"
+                        ]
+                        print("Available Models:")
+                        for m in models: print(f" - {m}")
+                        continue
+                        
+                    if cmd == '/clear':
+                        engine.mutable_messages = []
+                        engine.transcript_store.entries = []
+                        print("Conversation history cleared.")
+                        continue
+                        
+                    if cmd == '/summary':
+                        print("\n" + engine.render_summary())
+                        continue
+
+                    if cmd == '/reset':
+                        engine = QueryEnginePort.from_workspace()
+                        print("Engine reset.")
+                        continue
+                
+                # Handle Context Referencing (#file)
+                processed_prompt = raw_input
+                import re
+                file_refs = re.findall(r'#(\S+)', raw_input)
+                for file_ref in file_refs:
+                    try:
+                        if os.path.exists(file_ref):
+                            with open(file_ref, 'r') as f:
+                                content = f.read()
+                            processed_prompt = processed_prompt.replace(f'#{file_ref}', f'\n--- FILE: {file_ref} ---\n{content}\n--- END FILE ---')
+                            print(f"📎 Attached file: {file_ref}")
+                        else:
+                            print(f"⚠️ File not found: {file_ref}")
+                    except Exception as e:
+                        print(f"❌ Error reading {file_ref}: {str(e)}")
+
+                # Submit Message
                 print("\n🤖 Assistant: ", end="", flush=True)
-                for chunk in engine.stream_submit_message(prompt):
+                for chunk in engine.stream_submit_message(processed_prompt):
                     if chunk['type'] == 'message_delta':
                         print(chunk['text'], end="", flush=True)
                 print("\n")
+                
             except KeyboardInterrupt:
                 print("\nGoodbye!")
                 break
