@@ -1,64 +1,45 @@
 import os
-from pathlib import Path
-
-PROVIDERS = {
-    "1": ("Groq", "https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
-    "2": ("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "anthropic/claude-3.5-sonnet"),
-    "3": ("OpenAI", "https://api.openai.com/v1/chat/completions", "gpt-5-mini"),
-    "4": ("DeepSeek", "https://api.deepseek.com/chat/completions", "deepseek-v4"),
-    "5": ("Anthropic", "https://api.anthropic.com/v1/messages", "claude-4-5-sonnet"),
-    "6": ("Together AI", "https://api.together.xyz/v1/chat/completions", "meta-llama/Llama-4-70B-Instruct-Turbo"),
-}
 
 def run_onboarding():
-    print("\n" + "="*40)
-    print("      Welcome to Claw-Termux      ")
-    print("="*40)
-    print("\nPlease select your AI Provider:")
-    for key, (name, _, _) in PROVIDERS.items():
-        print(f"  {key}. {name}")
-    print("  0. Custom Endpoint")
+    print("Welcome to Clawt (Claw-Termux) Setup!")
+    print("-----------------------------------")
     
-    choice = input("\nEnter choice (1-6, 0): ").strip()
+    providers = {
+        "1": ("Groq", "https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
+        "2": ("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-3.1-405b-instruct"),
+        "3": ("OpenAI", "https://api.openai.com/v1/chat/completions", "gpt-4o"),
+        "4": ("DeepSeek", "https://api.deepseek.com/chat/completions", "deepseek-chat"),
+        "5": ("Custom", "", "")
+    }
     
-    provider_name = ""
-    api_url = ""
-    default_model = ""
-    
-    if choice in PROVIDERS:
-        provider_name, api_url, default_model = PROVIDERS[choice]
-    elif choice == "0":
-        provider_name = "Custom"
-        api_url = input("Enter API URL (e.g., https://api.proxy.com/v1/chat/completions): ").strip()
-        default_model = input("Enter default model ID: ").strip()
-    else:
+    print("\nSelect your LLM Provider:")
+    for key, (name, _, _) in providers.items():
+        print(f"{key}. {name}")
+        
+    choice = input("\nChoice [1-5]: ")
+    if choice not in providers:
         print("Invalid choice. Defaulting to Groq.")
-        provider_name, api_url, default_model = PROVIDERS["1"]
-
-    print(f"\nSetting up {provider_name}...")
-    api_key = input(f"Please enter your {provider_name} API Key: ").strip()
+        choice = "1"
+        
+    provider_name, default_url, default_model = providers[choice]
     
-    if not api_key:
-        print("Warning: No API key provided. Setup incomplete.")
-        return False
+    if choice == "5":
+        api_url = input("Enter your custom API URL: ")
+        api_key = input("Enter your API Key: ")
+        model = input("Enter model name (e.g. llama-3): ")
+    else:
+        api_url = default_url
+        api_key = input(f"Enter your {provider_name} API Key: ")
+        model = default_model
+        
+    # Save configs
+    with open(".groq_api_key", "w") as f: f.write(api_key)
+    with open(".groq_api_url", "w") as f: f.write(api_url)
+    with open(".groq_model", "w") as f: f.write(model)
+    with open(".groq_provider", "w") as f: f.write(provider_name)
+    
+    print(f"\n✅ Setup complete! Clawt is configured to use {provider_name}.")
+    print("Run 'clawt' to start chatting.")
 
-    # Save to files
-    with open(".groq_api_key", "w") as f:
-        f.write(api_key)
-    with open(".groq_api_url", "w") as f:
-        f.write(api_url)
-    with open(".groq_model", "w") as f:
-        f.write(default_model)
-    with open(".groq_provider", "w") as f:
-        f.write(provider_name)
-
-    print("\n" + "-"*40)
-    print("✅ Setup Successful!")
-    print(f"Provider: {provider_name}")
-    print(f"Model:    {default_model}")
-    print(f"Config saved to local .groq_* files.")
-    print("-"*40 + "\n")
-    return True
-
-def check_setup():
-    return os.path.exists(".groq_api_key")
+if __name__ == "__main__":
+    run_onboarding()

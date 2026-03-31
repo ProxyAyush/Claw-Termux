@@ -1,10 +1,8 @@
-Claw-Termux
-Copyright 2026 Dr. Ayush Yadav
+Claw-Termux (Clawt)
+Copyright (c) 2026 Dr. Ayush Yadav
 
-This product includes software developed by Sigrid Jin (instructkr) 
-in the "claw-code" project (https://github.com/instructkr/claw-code).
+This project is an independent implementation based on the original 
+Claw-Code architecture by Sigrid Jin (instructkr).
 
-Legal Disclaimer:
-This project is an independent, "clean-room" Python rewrite designed to 
-study architectural patterns. It is not affiliated with, endorsed by, 
-or maintained by Anthropic.
+This software is NOT affiliated with, endorsed by, or maintained by any 
+third-party AI companies. All code is shared for educational purposes.
