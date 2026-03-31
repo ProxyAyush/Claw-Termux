@@ -2,17 +2,17 @@ import os
 from pathlib import Path
 
 PROVIDERS = {
-    "1": ("Groq", "https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile"),
+    "1": ("Groq", "https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
     "2": ("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "anthropic/claude-3.5-sonnet"),
-    "3": ("OpenAI", "https://api.openai.com/v1/chat/completions", "gpt-4o"),
-    "4": ("DeepSeek", "https://api.deepseek.com/chat/completions", "deepseek-chat"),
-    "5": ("Anthropic", "https://api.anthropic.com/v1/messages", "claude-3-5-sonnet-20241022"),
-    "6": ("Together AI", "https://api.together.xyz/v1/chat/completions", "meta-llama/Llama-3.3-70B-Instruct-Turbo"),
+    "3": ("OpenAI", "https://api.openai.com/v1/chat/completions", "gpt-5-mini"),
+    "4": ("DeepSeek", "https://api.deepseek.com/chat/completions", "deepseek-v4"),
+    "5": ("Anthropic", "https://api.anthropic.com/v1/messages", "claude-4-5-sonnet"),
+    "6": ("Together AI", "https://api.together.xyz/v1/chat/completions", "meta-llama/Llama-4-70B-Instruct-Turbo"),
 }
 
 def run_onboarding():
     print("\n" + "="*40)
-    print("      Welcome to claw-code (Termux)      ")
+    print("      Welcome to Claw-Termux      ")
     print("="*40)
     print("\nPlease select your AI Provider:")
     for key, (name, _, _) in PROVIDERS.items():

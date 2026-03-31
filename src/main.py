@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import sys
 
 from .bootstrap_graph import build_bootstrap_graph
 from .command_graph import build_command_graph
@@ -23,10 +24,11 @@ from .tools import execute_tool, get_tool, get_tools, render_tool_index
 from .onboarding import run_onboarding, check_setup
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description='Python porting workspace for the Claude Code rewrite effort')
+    parser = argparse.ArgumentParser(description='Python porting workspace for the Claw-Termux agent')
     subparsers = parser.add_subparsers(dest='command', required=True)
     subparsers.add_parser('setup', help='run interactive setup for API provider and key')
-    subparsers.add_parser('chat', help='start an interactive chat session')
+    chat_parser = subparsers.add_parser('chat', help='start an interactive chat session')
+    chat_parser.add_argument('--session', help='resume a specific session ID')
     subparsers.add_parser('summary', help='render a Markdown summary of the Python porting workspace')
     subparsers.add_parser('manifest', help='print the current Python workspace manifest')
     subparsers.add_parser('models', help='list available Groq models')
@@ -113,9 +115,17 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     if args.command == 'chat':
-        engine = QueryEnginePort.from_workspace()
+        if args.session:
+            try:
+                engine = QueryEnginePort.from_saved_session(args.session)
+                print(f"Resuming session: {args.session}")
+            except Exception:
+                engine = QueryEnginePort.from_workspace()
+        else:
+            engine = QueryEnginePort.from_workspace()
+            
         print("\n💬 Starting Claw-Termux Chat")
-        print("Type '/help' for commands, or 'exit' to stop.")
+        print("Type '/' to see all commands, or 'exit' to stop.")
         
         while True:
             try:
@@ -133,25 +143,43 @@ def main(argv: list[str] | None = None) -> int:
                     if raw_input == '/':
                         print("\nAvailable Commands:")
                         print("  /help           - Show this help message")
-                        print("  /model [id]     - View or change the current model")
-                        print("  /models         - List available Groq models")
+                        print("  /model          - View and change current model")
+                        print("  /models         - List all available models")
                         print("  /sessions       - List saved conversations")
                         print("  /load <id>      - Resume a specific session")
                         print("  /new            - Start a fresh conversation")
+                        print("  /update         - Fetch latest version and restart")
                         print("  /clear          - Clear current conversation history")
                         print("  /summary        - Show session summary")
-                        print("  /reset          - Full reset of the engine")
+                        print("  /reset          - Full engine reset")
                         continue
 
                     parts = raw_input.split()
                     cmd = parts[0].lower()
                     
+                    if cmd == '/update':
+                        print("\n🚀 Updating Claw-Termux from GitHub...")
+                        import subprocess
+                        try:
+                            repo_path = "/data/data/com.termux/files/home/Claw-Termux"
+                            subprocess.run(['git', '-C', repo_path, 'reset', '--hard', 'origin/main'], check=False)
+                            subprocess.run(['git', '-C', repo_path, 'pull', 'origin', 'main'], check=True)
+                            print("✅ Update successful! Restarting...")
+                            os.execv(sys.executable, [sys.executable, '-m', 'src.main', 'chat', '--session', engine.session_id])
+                        except Exception as e:
+                            print(f"❌ Update failed: {str(e)}")
+                        continue
+
                     if cmd == '/help':
                         print("\nAvailable Commands:")
                         print("  /help           - Show this help message")
-                        print("  /model [id]     - View or change the current model")
-                        print("  /models         - List available Groq models")
-                        print("  /clear          - Clear conversation history")
+                        print("  /model [id]     - View or change current model")
+                        print("  /models         - List available models")
+                        print("  /sessions       - List saved conversations")
+                        print("  /load <id>      - Resume a specific session")
+                        print("  /new            - Start a fresh conversation")
+                        print("  /update         - Update clawt and restart session")
+                        print("  /clear          - Clear current conversation history")
                         print("  /summary        - Show session summary")
                         print("  /reset          - Full reset of the engine")
                         print("\nContext Referencing:")
@@ -159,23 +187,40 @@ def main(argv: list[str] | None = None) -> int:
                         continue
                     
                     if cmd == '/model':
+                        models_list = [
+                            "meta-llama/llama-4-scout-17b-16e-instruct",
+                            "openai/gpt-oss-120b",
+                            "openai/gpt-oss-20b",
+                            "qwen/qwen3-32b",
+                            "llama-3.3-70b-versatile",
+                            "llama-3.1-8b-instant",
+                            "deepseek/deepseek-v4",
+                            "meta-llama/llama-4-70b-instruct"
+                        ]
                         if len(parts) > 1:
                             new_model = parts[1]
                             with open(".groq_model", "w") as f:
                                 f.write(new_model)
                             engine.client.model = new_model
-                            print(f"Model updated to: {new_model}")
+                            print(f"✅ Model updated to: {new_model}")
                         else:
-                            print(f"Current model: {engine.client.model}")
+                            print(f"\n✨ Current model: {engine.client.model}")
+                            print("To change, type: /model <id>")
+                            print("\nLatest 2026 Models on Groq:")
+                            for i, m in enumerate(models_list, 1):
+                                print(f"  {i}. {m}")
                         continue
                     
                     if cmd == '/models':
                         models = [
-                            "llama-3.3-70b-versatile", "llama-3.1-8b-instant",
-                            "mixtral-8x7b-32768", "gemma2-9b-it",
-                            "deepseek-r1-distill-llama-70b", "qwen-2.5-32b"
+                            "meta-llama/llama-4-scout-17b-16e-instruct (Reasoning)",
+                            "openai/gpt-oss-120b (Flagship)",
+                            "openai/gpt-oss-20b (Ultra-Fast)",
+                            "qwen/qwen3-32b (Efficient)",
+                            "llama-3.3-70b-versatile",
+                            "deepseek/deepseek-v4"
                         ]
-                        print("Available Models:")
+                        print("\nAvailable 2026 Models:")
                         for m in models: print(f" - {m}")
                         continue
                         
@@ -228,7 +273,6 @@ def main(argv: list[str] | None = None) -> int:
                 
                 # Handle Context Referencing (#file)
                 processed_prompt = raw_input
-                import re
                 file_refs = re.findall(r'#(\S+)', raw_input)
                 for file_ref in file_refs:
                     try:
@@ -271,13 +315,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == 'models':
         models = [
-            "llama-3.3-70b-versatile (Production, Versatile, 128k context)",
-            "llama-3.1-8b-instant (Production, Fast, 128k context)",
-            "mixtral-8x7b-32768 (Production, Sparse MoE, 32k context)",
-            "gemma2-9b-it (Production, Google model, 8k context)",
-            "deepseek-r1-distill-llama-70b (Reasoning)",
-            "llama-3.3-70b-specdec (Speculative Decoding)",
-            "qwen-2.5-32b (Fast, Versatile)"
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3-32b",
+            "llama-3.3-70b-versatile",
+            "deepseek/deepseek-v4"
         ]
         print("Available Groq Models:")
         for m in models:
