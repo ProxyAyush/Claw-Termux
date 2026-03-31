@@ -9,7 +9,6 @@
 - **⚡ High-Speed Streaming:** Optimized for low-latency responses even on mobile networks.
 
 ---
-
 ### **📦 One-Command Installation**
 Paste this into your Termux to install everything automatically:
 
@@ -18,29 +17,26 @@ pkg install git python -y && \
 git clone https://github.com/ProxyAyush/Claw-Termux.git && \
 cd Claw-Termux && \
 chmod +x install.sh && \
-./install.sh
+./install.sh && \
+source ~/.bashrc && \
+clawt
 ```
 
 ---
 
 ### **🚀 Getting Started**
-Once installed, you can use the `claw` command from anywhere:
+Once installed, you can use the `clawt` command from anywhere:
 
-1. **Initialize Setup:**
+1. **Start Chatting:**
    ```bash
-   claw setup
+   clawt
    ```
-   *(Follow the prompts to select your provider and enter your API key)*
+   *(The first time you run it, it will automatically guide you through setup)*
 
-2. **Start a Conversation:**
-   ```bash
-   claw turn-loop "Your prompt"
-   ```
-
-3. **Management Commands:**
-   - `claw models`: List available models.
-   - `claw set-model <id>`: Switch your active model.
-   - `claw summary`: See a technical summary of your workspace.
+2. **Management Commands:**
+   - `clawt models`: List available models.
+   - `clawt set-model <id>`: Switch your active model.
+   - `clawt summary`: See a technical summary.
 
 ---
 

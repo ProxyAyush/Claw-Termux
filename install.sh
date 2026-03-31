@@ -25,13 +25,18 @@ setup_alias() {
     local rc_file=$1
     # Create the file if it doesn't exist, then add the alias
     touch "$rc_file"
-    if ! grep -q "alias claw=" "$rc_file"; then
+    # Remove old alias if exists
+    sed -i "/alias claw=/d" "$rc_file"
+    sed -i "/alias clawt=/d" "$rc_file"
+
+    if ! grep -q "alias clawt=" "$rc_file"; then
         echo "" >> "$rc_file"
         echo "# Claw-Termux Alias" >> "$rc_file"
-        echo "alias claw='PYTHONPATH=$HOME/Claw-Termux python3 -m src.main'" >> "$rc_file"
-        echo "✅ Added 'claw' alias to $rc_file"
+        echo "alias clawt='PYTHONPATH=/data/data/com.termux/files/home/Claw-Termux python3 -m src.main chat'" >> "$rc_file"
+        echo "✅ Added 'clawt' alias to $rc_file"
     fi
 }
+
 
 setup_alias "$HOME/.bashrc"
 setup_alias "$HOME/.zshrc"

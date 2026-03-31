@@ -24,6 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='Python porting workspace for the Claude Code rewrite effort')
     subparsers = parser.add_subparsers(dest='command', required=True)
     subparsers.add_parser('setup', help='run interactive setup for API provider and key')
+    subparsers.add_parser('chat', help='start an interactive chat session')
     subparsers.add_parser('summary', help='render a Markdown summary of the Python porting workspace')
     subparsers.add_parser('manifest', help='print the current Python workspace manifest')
     subparsers.add_parser('models', help='list available Groq models')
@@ -104,10 +105,31 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == 'setup':
         return 0 if run_onboarding() else 1
         
-    if not check_setup() and args.command in ['turn-loop', 'route', 'bootstrap', 'flush-transcript']:
+    if not check_setup() and args.command in ['chat', 'turn-loop', 'route', 'bootstrap', 'flush-transcript']:
         print("No API configuration found. Running setup...")
         if not run_onboarding():
             return 1
+
+    if args.command == 'chat':
+        engine = QueryEnginePort.from_workspace()
+        print("\n💬 Starting Claw-Termux Chat (Type 'exit' or 'quit' to stop)")
+        while True:
+            try:
+                prompt = input("\n👤 You: ").strip()
+                if not prompt or prompt.lower() in ['exit', 'quit']:
+                    print("Goodbye!")
+                    break
+                print("\n🤖 Assistant: ", end="", flush=True)
+                for chunk in engine.stream_submit_message(prompt):
+                    if chunk['type'] == 'message_delta':
+                        print(chunk['text'], end="", flush=True)
+                print("\n")
+            except KeyboardInterrupt:
+                print("\nGoodbye!")
+                break
+            except Exception as e:
+                print(f"\n❌ Error: {str(e)}")
+        return 0
 
     manifest = build_port_manifest()
     if args.command == 'summary':
