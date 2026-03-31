@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/ProxyAyush/Claw-Termux?style=for-the-badge&color=gold" alt="Stars" />
-  <img src="https://img.shields.io/github/forks/ProxyAyush/Claw-Termux?style=for-the-badge&color=blue" alt="Forks" />
+  <img src="https://img.shields.io/github/stars/ProxyAyush/Claw-Termux?style=for-the-badge&color=gold&cache=1" alt="Stars" />
+  <img src="https://img.shields.io/github/forks/ProxyAyush/Claw-Termux?style=for-the-badge&color=blue&cache=1" alt="Forks" />
   <img src="https://img.shields.io/github/license/ProxyAyush/Claw-Termux?style=for-the-badge" alt="License" />
   <img src="https://komarev.com/ghpvc/?username=ProxyAyush&repo=Claw-Termux&label=VISITORS&style=for-the-badge&color=58A6FF" alt="Visitors" />
 </p>
