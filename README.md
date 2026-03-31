@@ -33,6 +33,9 @@ Paste this into your Termux to transform it into a world-class engineering envir
 pkg install git python -y && git clone https://github.com/ProxyAyush/Claw-Termux.git && cd Claw-Termux && chmod +x install.sh && ./install.sh && source ~/.bashrc && clawt
 ```
 
+### 🔑 Getting an API Key
+For the best experience with flagship **Gemini 3.1** and **2.5** models, get your API key for free from **[Google AI Studio](https://aistudio.google.com/)**. Simply sign in, click "Get API key", and paste it into the Clawt setup wizard.
+
 ---
 
 ## 🎮 Command Menu
