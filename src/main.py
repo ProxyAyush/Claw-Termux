@@ -176,6 +176,38 @@ def main(argv: list[str] | None = None) -> int:
                         print("\n" + engine.render_summary())
                         continue
 
+                    if cmd == '/sessions':
+                        from .session_store import DEFAULT_SESSION_DIR
+                        if DEFAULT_SESSION_DIR.exists():
+                            sessions = list(DEFAULT_SESSION_DIR.glob("*.json"))
+                            if sessions:
+                                print("\nSaved Sessions:")
+                                for s in sessions:
+                                    print(f" - {s.stem}")
+                            else:
+                                print("No saved sessions found.")
+                        else:
+                            print("No session directory found.")
+                        continue
+
+                    if cmd == '/load':
+                        if len(parts) > 1:
+                            sid = parts[1]
+                            try:
+                                engine = QueryEnginePort.from_saved_session(sid)
+                                print(f"Resumed session: {sid}")
+                                print(f"History: {len(engine.mutable_messages)} messages")
+                            except Exception as e:
+                                print(f"❌ Failed to load session {sid}: {str(e)}")
+                        else:
+                            print("Usage: /load <session_id>")
+                        continue
+
+                    if cmd == '/new':
+                        engine = QueryEnginePort.from_workspace()
+                        print(f"Started new session: {engine.session_id}")
+                        continue
+
                     if cmd == '/reset':
                         engine = QueryEnginePort.from_workspace()
                         print("Engine reset.")
@@ -203,6 +235,12 @@ def main(argv: list[str] | None = None) -> int:
                     if chunk['type'] == 'message_delta':
                         print(chunk['text'], end="", flush=True)
                 print("\n")
+                
+                # Auto-save after every turn
+                try:
+                    engine.persist_session()
+                except Exception:
+                    pass
                 
             except KeyboardInterrupt:
                 print("\nGoodbye!")
