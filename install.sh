@@ -25,7 +25,7 @@ setup_alias() {
     # Create the file if it doesn't exist, then add the alias
     touch "$rc_file"
     # Remove old alias if exists
-    sed -i "/alias claw=/d" "$rc_file"
+    sed -i "/alias clawt=/d" "$rc_file"
     sed -i "/alias clawt=/d" "$rc_file"
 
     if ! grep -q "alias clawt=" "$rc_file"; then
@@ -47,8 +47,8 @@ echo "🎉 Claw-Termux Installation Complete!"
 echo "========================================="
 echo "To start using the agent:"
 echo "1. Run: source ~/.bashrc (or restart Termux)"
-echo "2. Run: claw setup"
+echo "2. Run: clawt"
 echo ""
 echo "Note: If you are using a non-standard shell,"
-echo "add this to your config: alias claw='PYTHONPATH=$HOME/Claw-Termux python3 -m src.main'"
+echo "add this to your config: alias clawt='PYTHONPATH=$HOME/Claw-Termux python3 -m src.main'"
 echo "========================================="
