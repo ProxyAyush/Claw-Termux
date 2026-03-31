@@ -1,46 +1,68 @@
-# Claw-Termux (Clawt)
+# 🤖 Claw-Termux (Clawt)
 
-**Claw-Termux** (branded as **Clawt**) is an optimized, Android-first version of an agentic CLI coding assistant. This project is specifically designed to run seamlessly on **Termux** by replacing heavy, build-intensive dependencies with a lightweight, high-performance engine.
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=auto&height=200&section=header&text=Claw-Termux&fontSize=90" alt="Clawt Hero" />
+</p>
 
-## 🚀 Key Features
+<p align="center">
+  <img src="https://img.shields.io/github/stars/ProxyAyush/Claw-Termux?style=for-the-badge&color=gold" alt="Stars" />
+  <img src="https://img.shields.io/github/forks/ProxyAyush/Claw-Termux?style=for-the-badge&color=blue" alt="Forks" />
+  <img src="https://img.shields.io/github/license/ProxyAyush/Claw-Termux?style=for-the-badge" alt="License" />
+  <img src="https://hits.se/articles/ProxyAyush/Claw-Termux.svg" alt="Visitors" />
+</p>
 
-- **⚡ Blazing Fast:** Powered by **Groq** for near-instant tool-calling and code generation.
-- **🤖 Fully Agentic:** Implements a sophisticated "Chat -> Tool Call -> Execute -> Feedback" loop.
-- **🛠️ Built-in Tools:** Functional Termux-side tools for `execute_bash`, `read_file`, `write_file`, `edit_file`, `glob`, and `grep`.
-- **🌍 Universal API Support:** Out-of-the-box support for **Groq, OpenRouter, DeepSeek, OpenAI**, and **Together AI**.
-- **📱 Termux Optimized:** Zero Rust/C-build requirements; works on any Android device with Termux.
-
-## 📦 Installation
-
-```bash
-pkg install git python -y
-git clone https://github.com/ProxyAyush/Claw-Termux.git
-cd Claw-Termux
-chmod +x install.sh
-./install.sh
-source ~/.bashrc
-clawt
-```
-
-## 🎮 Commands
-
-Inside the `clawt` shell, use `/` to access the command menu:
-
-- `/help`: Show this help message.
-- `/model`: Switch to a different model.
-- `/models`: List available models for your provider.
-- `/sessions`: List saved conversation sessions.
-- `/load <id>`: Load a specific session.
-- `/new`: Start a fresh conversation.
-- `/update`: Pull latest changes from GitHub and restart.
-- `/summary`: Get a summary of the current session.
-- `/reset`: Clear the current conversation history.
-
-## 📝 Legal Notice
-
-- **Owner:** Dr. Ayush Yadav (ayushiamazon1@gmail.com)
-- **Legal Disclaimer:** This is an independent project. All code is shared for educational and research purposes.
-- **Attribution:** Based on the original architecture by Sigrid Jin/instructkr. See [NOTICE](./NOTICE) for full attributions.
+**Claw-Termux** (branded as **Clawt**) is an employee-grade, agentic CLI coding assistant optimized for Android. It brings the power of high-end engineering agents directly to your mobile terminal with zero lag and total autonomy.
 
 ---
-Maintained with ❤️ by **Dr. Ayush Yadav**
+
+## ✨ Features
+
+- **⚡ Frontier Models:** Native support for **Gemini 3.1**, **Llama 4 Scout**, and **GPT-OSS**.
+- **🐝 Agent Swarming:** Launch specialized sub-agents for parallel research and implementation.
+- **🛠️ Surgical Tools:** Direct Termux implementation of `edit_file`, `glob`, `grep`, and `bash`.
+- **🧠 Hierarchical Memory:** Automatically respects `CLAWT.md` project rules and global user preferences.
+- **🛡️ Secure By Design:** Local-first configuration with built-in protection against API key leaks.
+
+---
+
+## 🚀 One-Command Installation
+
+Paste this into your Termux to transform it into a world-class engineering environment:
+
+```bash
+pkg install git python -y && git clone https://github.com/ProxyAyush/Claw-Termux.git && cd Claw-Termux && chmod +x install.sh && ./install.sh && source ~/.bashrc && clawt
+```
+
+---
+
+## 🎮 Command Menu
+
+Inside the `clawt` chat, use these powerful commands:
+
+| Command | Action |
+| :--- | :--- |
+| `/` | Show this menu |
+| `/setup` | **Change API Key or Provider** (Switch to Gemini/Groq/etc.) |
+| `/model` | **Interactive Model Picker** (Select from 2026 flagship models) |
+| `/yolo` | Toggle **Auto-Approve** mode for faster tool execution |
+| `/sessions` | View and resume previous engineering sessions |
+| `/update` | **Instant Self-Update** to get the latest Clawt features |
+
+---
+
+## 📊 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=ProxyAyush/Claw-Termux&type=Date)](https://star-history.com/#ProxyAyush/Claw-Termux&Date)
+
+---
+
+## 📝 Legal & Credits
+
+- **Maintainer:** [Dr. Ayush Yadav](https://github.com/ProxyAyush)
+- **Architecture:** Based on the Clawt Python Port.
+- **Disclaimer:** Independent project. Not affiliated with Anthropic or Google.
+
+---
+<p align="center">
+  Maintained with ❤️ by <b>Dr. Ayush Yadav</b>
+</p>

@@ -11,6 +11,7 @@ REPO_ROOT = Path("/data/data/com.termux/files/home/Claw-Termux")
 
 class GroqClient:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+        # Load from environment or absolute file paths
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         key_file = REPO_ROOT / ".groq_api_key"
         if not self.api_key and key_file.exists():
@@ -30,6 +31,7 @@ class GroqClient:
         if not self.base_url:
             self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         
+        # Load Memory from absolute paths
         self.memory_context = self._load_memory()
 
         # The "EMPLOYEE-GRADE" Master System Prompt
@@ -57,6 +59,7 @@ class GroqClient:
 """
 
     def _load_memory(self) -> str:
+        """Discovers CLAWT.md files from current directory up to root."""
         memory_content = []
         user_memory = Path.home() / ".clawt" / "CLAWT.md"
         if user_memory.exists():
@@ -71,6 +74,7 @@ class GroqClient:
         if self.memory_context:
             memory_instr = f"\n# Memory & User Instructions\n{self.memory_context}\nIMPORTANT: Adhere to these instructions exactly as written. They OVERRIDE default behavior."
         base = self.master_system_prompt.format(memory_instruction=memory_instr)
+        
         if role == "verification":
             return base + "\n\n# VERIFICATION ROLE: Adversarial testing specialist. DO NOT modify files. Run adversarial probes (boundary, concurrency). End with VERDICT: PASS or FAIL."
         if role == "explore":
@@ -85,17 +89,25 @@ class GroqClient:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     def _compact_messages(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
-        if len(messages) <= 15: return messages
+        """Ensures the message history doesn't exceed API limits by keeping only recent turns."""
+        if len(messages) <= 15:
+            return messages
+        # Always keep the system prompt (at index 0)
         compacted = [messages[0]]
+        # Keep the 14 most recent messages
         compacted.extend(messages[-14:])
         return compacted
 
     def chat(self, messages: List[Dict[str, str]], role: str = "coordinator") -> Dict[Any, Any]:
         if not self.api_key: raise ValueError("API Key not set. Run setup.")
+        
+        # Inject system prompt if not present
         if not any(m.get("role") == "system" for m in messages):
             messages.insert(0, {"role": "system", "content": self.get_system_prompt(role)})
-        
+
+        # Compact history to prevent 413 Payload Too Large
         messages = self._compact_messages(messages)
+
         headers = self._get_headers()
         payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
@@ -107,6 +119,11 @@ class GroqClient:
             with httpx.Client() as client:
                 try:
                     response = client.post(self.base_url, headers=headers, json=payload, timeout=120.0)
+                    if response.status_code == 400:
+                        # Detailed 400 Diagnostics
+                        error_body = response.text
+                        raise httpx.HTTPStatusError(f"400 Bad Request: {error_body}", request=response.request, response=response)
+                    
                     response.raise_for_status()
                     return response.json()
                 except httpx.HTTPStatusError as e:
@@ -140,11 +157,17 @@ class GroqClient:
                     if stream_callback: stream_callback(f"\n[⚡ Clawt: {name}]\n")
                     result = handle_tool_call(name, args)
                     
+                    # Aggressive Truncation for Tool Results
                     if not isinstance(result, str): result = str(result)
                     if len(result) > 8000:
                         result = result[:8000] + "\n... [Output truncated to prevent Payload Too Large error] ..."
                     
-                    messages.append({"role": "tool", "tool_call_id": tool_call["id"], "name": name, "content": result})
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call["id"],
+                        "name": name,
+                        "content": result
+                    })
                     if stream_callback: stream_callback(f"[✓ Done]\n")
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 413:

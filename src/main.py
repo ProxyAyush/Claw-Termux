@@ -10,18 +10,25 @@ from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, Stor
 # Global YOLO mode (Auto-approve)
 YOLO_MODE = False
 
+# Interactive Model List for 2026
+MODEL_OPTIONS = {
+    "1": "gemini-3.1-pro",
+    "2": "gemini-3.1-flash",
+    "3": "gemini-2.5-flash",
+    "4": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "5": "openai/gpt-oss-120b",
+    "6": "deepseek-chat"
+}
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='Clawt: The advanced Termux CLI agent')
     subparsers = parser.add_subparsers(dest='command', help='Command to run')
-    
     subparsers.add_parser('setup', help='run interactive setup')
-    chat_parser = subparsers.add_parser('chat', help='start an interactive session (default)')
+    chat_parser = subparsers.add_parser('chat', help='start an interactive session')
     chat_parser.add_argument('--session', help='resume session ID')
     chat_parser.add_argument('--yolo', action='store_true', help='enable auto-approve mode')
-    
     subparsers.add_parser('models', help='list available models')
     subparsers.add_parser('update', help='update from github')
-    
     return parser
 
 def main(argv: list[str] | None = None) -> int:
@@ -89,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
                         print("  /help           - Show this help menu")
                         print("  /setup          - Change API keys or Provider")
                         print("  /yolo           - Toggle auto-approve mode")
-                        print("  /model [id]     - Switch active model")
+                        print("  /model          - Interactive model picker")
                         print("  /models         - List latest 2026 models")
                         print("  /sessions       - List saved sessions")
                         print("  /load <id>      - Resume a session")
@@ -109,30 +116,24 @@ def main(argv: list[str] | None = None) -> int:
                         continue
 
                     if slash_cmd == '/model':
-                        if len(cmd_parts) > 1:
-                            new_model = cmd_parts[1]
+                        print("\nSelect a Model:")
+                        for k, v in MODEL_OPTIONS.items():
+                            print(f"  {k}. {v} {'(Active)' if v == client.model else ''}")
+                        
+                        choice = input("\nChoice [1-6]: ").strip()
+                        if choice in MODEL_OPTIONS:
+                            new_model = MODEL_OPTIONS[choice]
                             from .groq_client import REPO_ROOT
                             (REPO_ROOT / ".groq_model").write_text(new_model)
                             client.model = new_model
                             print(f"✅ Model set to: {new_model}")
                         else:
-                            print(f"✨ Active Model: {client.model}")
+                            print("Invalid choice.")
                         continue
 
                     if slash_cmd == '/models':
-                        print("\nLatest 2026 Models:")
-                        print(" --- Google Gemini Frontier ---")
-                        print(" - gemini-3.1-pro (Preview)")
-                        print(" - gemini-3.1-flash")
-                        print(" - gemini-3.1-flash-lite")
-                        print(" --- Google Gemini Stable ---")
-                        print(" - gemini-2.5-pro (1M+ context)")
-                        print(" - gemini-2.5-flash (Default)")
-                        print("\n --- Groq / OpenRouter ---")
-                        print(" - meta-llama/llama-4-scout-17b-16e-instruct")
-                        print(" - openai/gpt-oss-120b")
-                        print(" - deepseek-chat")
-                        print(" - gpt-4o")
+                        print("\nPopular 2026 Models:")
+                        for v in MODEL_OPTIONS.values(): print(f" - {v}")
                         continue
 
                     if slash_cmd == '/update':
@@ -145,6 +146,34 @@ def main(argv: list[str] | None = None) -> int:
                             print("✅ Update successful! Restarting...")
                             os.execv(sys.executable, [sys.executable, '-m', 'src.main', 'chat', '--session', session_id])
                         except Exception as e: print(f"❌ Update failed: {str(e)}")
+                        continue
+
+                    if slash_cmd == '/sessions':
+                        if DEFAULT_SESSION_DIR.exists():
+                            print("\nSaved Sessions:")
+                            for s in DEFAULT_SESSION_DIR.glob("*.json"): print(f" - {s.stem}")
+                        else: print("No session directory found.")
+                        continue
+                        
+                    if slash_cmd == '/load' and len(cmd_parts) > 1:
+                        sid = cmd_parts[1]
+                        try:
+                            stored = load_session(sid)
+                            messages = []
+                            for i, msg in enumerate(stored.messages):
+                                role = "user" if i % 2 == 0 else "assistant"
+                                messages.append({"role": role, "content": msg})
+                            session_id = sid
+                            print(f"✅ Resumed: {sid}")
+                        except Exception as e:
+                            print(f"❌ Load failed: {str(e)}")
+                        continue
+
+                    if slash_cmd == '/new':
+                        messages = []
+                        from uuid import uuid4
+                        session_id = uuid4().hex
+                        print(f"✨ Started fresh session: {session_id}")
                         continue
 
                 # Handle File Context (#)
