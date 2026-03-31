@@ -9,6 +9,7 @@
   <img src="https://img.shields.io/github/forks/ProxyAyush/Claw-Termux?style=for-the-badge&color=blue" alt="Forks" />
   <img src="https://img.shields.io/github/license/ProxyAyush/Claw-Termux?style=for-the-badge" alt="License" />
   <img src="https://hits.se/articles/ProxyAyush/Claw-Termux.svg" alt="Visitors" />
+  <img src="https://komarev.com/ghpvc/?username=ProxyAyush&style=for-the-badge&color=58A6FF&label=PROFILE+VIEWS" alt="Profile Views" />
 </p>
 
 **Claw-Termux** (branded as **Clawt**) is an employee-grade, agentic CLI coding assistant optimized for Android. It brings the power of high-end engineering agents directly to your mobile terminal with zero lag and total autonomy.
