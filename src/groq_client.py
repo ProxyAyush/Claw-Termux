@@ -154,11 +154,27 @@ class GroqClient:
                     try: args = json.loads(tool_call["function"]["arguments"])
                     except: args = {}
                     
-                    if stream_callback: stream_callback(f"\n[⚡ Clawt: {name}]\n")
+                    # --- TRANSPARENCY ENHANCEMENT ---
+                    if name == "execute_bash":
+                        cmd_display = args.get("command", "")
+                        if stream_callback:
+                            stream_callback(f"\n\n[🛠️  Clawt Running Shell Command]\n$ {cmd_display}\n")
+                    else:
+                        if stream_callback:
+                            stream_callback(f"\n[⚡ Clawt: {name}]\n")
+                    
+                    # Execute Tool
                     result = handle_tool_call(name, args)
                     
                     # Aggressive Truncation for Tool Results
                     if not isinstance(result, str): result = str(result)
+                    
+                    # Show bash output to user if desired
+                    if name == "execute_bash" and stream_callback:
+                        # Show first 500 chars of output to keep UI clean
+                        preview = result[:500] + "..." if len(result) > 500 else result
+                        stream_callback(f"[Output]:\n{preview}\n")
+
                     if len(result) > 8000:
                         result = result[:8000] + "\n... [Output truncated to prevent Payload Too Large error] ..."
                     
@@ -168,7 +184,10 @@ class GroqClient:
                         "name": name,
                         "content": result
                     })
-                    if stream_callback: stream_callback(f"[✓ Done]\n")
+                    
+                    if stream_callback:
+                        stream_callback(f"[✓ Done]\n")
+                        
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 413:
                     if len(messages) > 2:
