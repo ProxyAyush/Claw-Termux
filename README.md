@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/github/stars/ProxyAyush/Claw-Termux?style=for-the-badge&color=gold" alt="Stars" />
   <img src="https://img.shields.io/github/forks/ProxyAyush/Claw-Termux?style=for-the-badge&color=blue" alt="Forks" />
   <img src="https://img.shields.io/github/license/ProxyAyush/Claw-Termux?style=for-the-badge" alt="License" />
-  <img src="https://hits.se/articles/ProxyAyush/Claw-Termux.svg" alt="Visitors" />
+  <img src="https://komarev.com/ghpvc/?username=ProxyAyush&repo=Claw-Termux&label=VISITORS&style=for-the-badge&color=58A6FF" alt="Visitors" />
 </p>
 
 **Claw-Termux** (branded as **Clawt**) is an employee-grade, agentic CLI coding assistant optimized for Android. It brings the power of high-end engineering agents directly to your mobile terminal with zero lag and total autonomy.
@@ -55,7 +55,21 @@ Inside the `clawt` chat, use these powerful commands:
 
 ## 📊 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=ProxyAyush/Claw-Termux&type=Date)](https://star-history.com/#ProxyAyush/Claw-Termux&Date)
+<a href="https://star-history.com/#ProxyAyush/Claw-Termux&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ProxyAyush/Claw-Termux&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ProxyAyush/Claw-Termux&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ProxyAyush/Claw-Termux&type=Date" />
+  </picture>
+</a>
+
+---
+
+## 🗺️ Visitor Map
+
+<p align="center">
+  <img src="https://api.visitorbadge.io/api/visitors?path=ProxyAyush%2FClaw-Termux&label=EXPLORERS&labelColor=%2358a6ff&countColor=%23f778ba&style=flat-square" alt="Visitor Map" />
+</p>
 
 ---
 
