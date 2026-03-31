@@ -15,7 +15,7 @@ def run_onboarding() -> bool:
     providers = {
         "1": ("Groq", "https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
         "2": ("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-3.1-405b-instruct"),
-        "3": ("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.0-flash"),
+        "3": ("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.5-flash"),
         "4": ("DeepSeek", "https://api.deepseek.com/chat/completions", "deepseek-chat"),
         "5": ("OpenAI", "https://api.openai.com/v1/chat/completions", "gpt-4o"),
         "6": ("Custom", "", "")

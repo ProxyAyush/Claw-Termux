@@ -6,8 +6,6 @@ import sys
 from .groq_client import GroqClient
 from .onboarding import run_onboarding, check_setup
 from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, StoredSession
-from .query_engine import QueryEnginePort
-from .port_manifest import build_port_manifest
 
 # Global YOLO mode (Auto-approve)
 YOLO_MODE = False
@@ -23,7 +21,6 @@ def build_parser() -> argparse.ArgumentParser:
     
     subparsers.add_parser('models', help='list available models')
     subparsers.add_parser('update', help='update from github')
-    subparsers.add_parser('summary', help='render workspace summary')
     
     return parser
 
@@ -93,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
                         print("  /setup          - Change API keys or Provider")
                         print("  /yolo           - Toggle auto-approve mode")
                         print("  /model [id]     - Switch active model")
-                        print("  /models         - List available 2026 models")
+                        print("  /models         - List latest 2026 models")
                         print("  /sessions       - List saved sessions")
                         print("  /load <id>      - Resume a session")
                         print("  /new            - Start a fresh session")
@@ -120,16 +117,17 @@ def main(argv: list[str] | None = None) -> int:
                             print(f"✅ Model set to: {new_model}")
                         else:
                             print(f"✨ Active Model: {client.model}")
-                            print("Tip: Use '/model <id>' to switch.")
                         continue
 
                     if slash_cmd == '/models':
-                        print("\nPopular 2026 Models:")
-                        print(" --- Google Gemini ---")
-                        print(" - gemini-2.0-flash (Fast, Default)")
-                        print(" - gemini-2.0-pro-exp (Powerful)")
-                        print(" - gemini-1.5-flash")
-                        print(" - gemini-1.5-pro")
+                        print("\nLatest 2026 Models:")
+                        print(" --- Google Gemini Frontier ---")
+                        print(" - gemini-3.1-pro (Preview)")
+                        print(" - gemini-3.1-flash")
+                        print(" - gemini-3.1-flash-lite")
+                        print(" --- Google Gemini Stable ---")
+                        print(" - gemini-2.5-pro (1M+ context)")
+                        print(" - gemini-2.5-flash (Default)")
                         print("\n --- Groq / OpenRouter ---")
                         print(" - meta-llama/llama-4-scout-17b-16e-instruct")
                         print(" - openai/gpt-oss-120b")
