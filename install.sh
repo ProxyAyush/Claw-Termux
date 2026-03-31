@@ -23,13 +23,13 @@ pip install httpx
 # Supports both Bash and Zsh
 setup_alias() {
     local rc_file=$1
-    if [ -f "$rc_file" ]; then
-        if ! grep -q "alias claw=" "$rc_file"; then
-            echo "" >> "$rc_file"
-            echo "# Claw-Termux Alias" >> "$rc_file"
-            echo "alias claw='python3 -m src.main'" >> "$rc_file"
-            echo "✅ Added 'claw' alias to $rc_file"
-        fi
+    # Create the file if it doesn't exist, then add the alias
+    touch "$rc_file"
+    if ! grep -q "alias claw=" "$rc_file"; then
+        echo "" >> "$rc_file"
+        echo "# Claw-Termux Alias" >> "$rc_file"
+        echo "alias claw='python3 -m src.main'" >> "$rc_file"
+        echo "✅ Added 'claw' alias to $rc_file"
     fi
 }
 
