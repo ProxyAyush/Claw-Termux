@@ -57,14 +57,14 @@ Inside the `clawt` chat, use these powerful commands in working order:
 
 ---
 
-## 📊 Star History
+## Star History
 
-<a href="https://star-history.com/#ProxyAyush/Claw-Termux&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ProxyAyush/Claw-Termux&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ProxyAyush/Claw-Termux&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ProxyAyush/Claw-Termux&type=Date" />
-  </picture>
+<a href="https://www.star-history.com/?repos=ProxyAyush%2FClaw-Termux&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=ProxyAyush/Claw-Termux&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=ProxyAyush/Claw-Termux&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=ProxyAyush/Claw-Termux&type=date&legend=top-left" />
+ </picture>
 </a>
 
 ---
