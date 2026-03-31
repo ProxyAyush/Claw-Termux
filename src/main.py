@@ -130,6 +130,19 @@ def main(argv: list[str] | None = None) -> int:
                 
                 # Handle Slash Commands
                 if raw_input.startswith('/'):
+                    if raw_input == '/':
+                        print("\nAvailable Commands:")
+                        print("  /help           - Show this help message")
+                        print("  /model [id]     - View or change the current model")
+                        print("  /models         - List available Groq models")
+                        print("  /sessions       - List saved conversations")
+                        print("  /load <id>      - Resume a specific session")
+                        print("  /new            - Start a fresh conversation")
+                        print("  /clear          - Clear current conversation history")
+                        print("  /summary        - Show session summary")
+                        print("  /reset          - Full reset of the engine")
+                        continue
+
                     parts = raw_input.split()
                     cmd = parts[0].lower()
                     
