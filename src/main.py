@@ -13,7 +13,6 @@ from .onboarding import run_onboarding, check_setup
 from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, StoredSession
 
 console = Console()
-YOLO_MODE = False
 
 MODEL_OPTIONS = {
     "1": "gemini-3.1-pro",
@@ -43,7 +42,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 def main(argv: list[str] | None = None) -> int:
-    global YOLO_MODE
     parser = build_parser()
     args = parser.parse_args(argv)
     
@@ -70,10 +68,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if cmd == 'chat':
         print_banner()
-        YOLO_MODE = getattr(args, 'yolo', False)
         client = GroqClient()
-        session_id = getattr(args, 'session', None)
+        # Initialize YOLO mode from args
+        client.yolo_mode = getattr(args, 'yolo', False)
         
+        session_id = getattr(args, 'session', None)
         if session_id:
             try:
                 stored = load_session(session_id)
@@ -88,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
             from uuid import uuid4
             session_id = uuid4().hex
         
-        console.print(f"[bold green]💬 Clawt Active[/bold green] [dim]| Model: {client.model} | YOLO: {'ON' if YOLO_MODE else 'OFF'}[/dim]")
+        console.print(f"[bold green]💬 Clawt Active[/bold green] [dim]| Model: {client.model} | YOLO: {'ON' if client.yolo_mode else 'OFF'}[/dim]")
         console.print("[dim]Type '/' for commands, or 'exit' to stop.[/dim]\n")
         
         while True:
@@ -107,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
                         table.add_column("Action", style="dim")
                         table.add_row("/help", "Show this help menu")
                         table.add_row("/setup", "Change API keys or Provider")
-                        table.add_row("/yolo", "Toggle auto-approve mode")
+                        table.add_row("/yolo", "Toggle auto-approve (YOLO) mode")
                         table.add_row("/model", "Interactive model picker")
                         table.add_row("/update", "Pull latest code and restart")
                         table.add_row("/new", "Start a fresh session")
@@ -121,8 +120,8 @@ def main(argv: list[str] | None = None) -> int:
                         continue
 
                     if slash_cmd == '/yolo':
-                        YOLO_MODE = not YOLO_MODE
-                        console.print(f"✅ YOLO Mode: [bold]{'ON' if YOLO_MODE else 'OFF'}[/bold]")
+                        client.yolo_mode = not client.yolo_mode
+                        console.print(f"🛡️  YOLO Mode: [bold]{'ON (Auto-Approve)' if client.yolo_mode else 'OFF (Protected)'}[/bold]")
                         continue
 
                     if slash_cmd == '/model':
@@ -171,7 +170,9 @@ def main(argv: list[str] | None = None) -> int:
 
                 messages.append({"role": "user", "content": processed_prompt})
                 console.print("\n[bold cyan]🤖 Clawt:[/bold cyan]")
-                for chunk in client.stream_chat(messages): pass 
+                res = client.chat_with_tools(messages)
+                if res == "User terminated session.": break
+                
                 console.print("\n" + "─" * console.width + "\n", style="dim")
                 
                 try:
