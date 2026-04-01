@@ -15,13 +15,29 @@
 
 ---
 
-## ✨ Features
+## ✨ Features (2026 Elite Build)
 
-- **⚡ Frontier Models:** Native support for **Gemini 3.1**, **Llama 4 Scout**, and **GPT-OSS**.
-- **🐝 Agent Swarming:** Launch specialized sub-agents for parallel research and implementation.
-- **🛠️ Surgical Tools:** Direct Termux implementation of `edit_file`, `glob`, `grep`, and `bash`.
-- **🧠 Hierarchical Memory:** Automatically respects `CLAWT.md` project rules and global user preferences.
+- **⚡ Elite Search Engine:** Powered by the **`ddgr`** structured binary for high-fidelity Google-grade results (Titles + Snippets + Links).
+- **🐝 Agent Swarming:** Launch specialized sub-agents for parallel research and verification.
+- **🛠️ Surgical Engineering:** Certified toolset including `edit_file`, `read_file` (with line numbers), and `glob`.
 - **🛡️ Secure By Design:** Local-first configuration with built-in protection against API key leaks.
+- **🎨 World-Class TUI:** Interactive arrow-key navigation with `rich` dashboard panels.
+
+---
+
+## 🛠️ Certified Toolset
+
+Clawt comes equipped with a suite of "Employee-Grade" tools for autonomous software engineering:
+
+| Tool | Capability |
+| :--- | :--- |
+| **`google_search`** | High-grade research tool returning structured technical indexing. |
+| **`web_fetch`** | Professional-grade text retrieval from any URL (8,000 char buffer). |
+| **`execute_bash`** | Full Termux shell access for git, testing, and system operations. |
+| **`edit_file`** | Surgical string replacement for precise, non-destructive code updates. |
+| **`read_file`** | Line-numbered reading for deep context analysis. |
+| **`glob_files`** | Pattern-based file discovery across the repository. |
+| **`spawn_agent`** | SWARMING MODE: Delegate complex sub-tasks to specialized sub-agents. |
 
 ---
 
@@ -30,30 +46,23 @@
 Paste this into your Termux to transform it into a world-class engineering environment:
 
 ```bash
-pkg install git python -y && git clone https://github.com/ProxyAyush/Claw-Termux.git && cd Claw-Termux && chmod +x install.sh && ./install.sh && source ~/.bashrc && clawt
+pkg install git python curl -y && git clone https://github.com/ProxyAyush/Claw-Termux.git && cd Claw-Termux && chmod +x install.sh && ./install.sh && source ~/.bashrc && clawt
 ```
-
-### 🔑 Getting an API Key
-For the best experience with flagship **Gemini 3.1** and **2.5** models, get your API key for free from **[Google AI Studio](https://aistudio.google.com/)**. Simply sign in, click "Get API key", and paste it into the Clawt setup wizard.
 
 ---
 
 ## 🎮 Interactive Command Menu
 
-Inside the `clawt` chat, use these powerful commands in working order:
+Inside the `clawt` chat, use these powerful commands:
 
 | Command | Action |
 | :--- | :--- |
 | `/` or `/help` | **Display Help** - Show the list of all available commands. |
 | `/setup` | **Provider Config** - Change your AI Provider or API keys anytime. |
 | `/yolo` | **Auto-Approve** - Toggle auto-mode for instant tool execution. |
-| `/model` | **Model Picker** - Open the interactive menu to switch between 2026 models. |
-| `/models` | **Model List** - Show all compatible flagship models for your provider. |
+| `/model` | **Model Picker** - Open the interactive menu to switch between flagship models. |
+| `/update` | **Instant Update** - Pull latest Clawt features and certified tools. |
 | `/sessions` | **Session Manager** - List all your saved engineering conversations. |
-| `/load <id>` | **Resume Session** - Reload a specific conversation by its ID. |
-| `/new` | **Fresh Start** - Clear history and start a completely new session. |
-| `/update` | **Instant Update** - Pull latest Clawt features from GitHub and restart. |
-| `/summary` | **Session Stats** - Show current session usage and model info. |
 
 ---
 
@@ -69,21 +78,13 @@ Inside the `clawt` chat, use these powerful commands in working order:
 
 ---
 
-## 🗺️ Visitor Map
-
-<p align="center">
-  <img src="https://api.visitorbadge.io/api/visitors?path=ProxyAyush%2FClaw-Termux&label=EXPLORERS&labelColor=%2358a6ff&countColor=%23f778ba&style=flat-square" alt="Visitor Map" />
-</p>
-
----
-
 ## 📝 Legal & Credits
 
-- **Maintainer:** [Dr. Ayush Yadav](https://github.com/ProxyAyush)
-- **Architecture:** Based on the original Clawt/Python Porting Effort.
-- **Disclaimer:** Independent project. Not affiliated with Anthropic or Google AI Studio.
+- **Founder & Maintainer:** [Dr. Ayush Yadav](https://github.com/ProxyAyush)
+- **Branding:** Clawt (v3.6 Elite Precision Build)
+- **Disclaimer:** Independent project. Built for high-end engineering on Android.
 
 ---
 <p align="center">
-  Maintained with ❤️ by <b>Dr. Ayush Yadav</b>
+  Made by <b>Dr. Ayush Yadav</b>
 </p>
