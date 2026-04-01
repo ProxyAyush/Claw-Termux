@@ -43,13 +43,10 @@ class GroqClient:
         
         # --- DEFINITIVE URL & MODEL NORMALIZATION ---
         if self.provider == "Google Gemini":
-            # Normalize Gemini Base URL
             if "/chat/completions" in self.base_url:
                 self.base_url = self.base_url.split("/chat/completions")[0]
             if not self.base_url.endswith("/"): self.base_url += "/"
             if "openai" not in self.base_url: self.base_url += "openai/"
-            
-            # OpenAI shim hates "models/" prefix
             if self.model.startswith("models/"):
                 self.model = self.model.replace("models/", "")
         
@@ -113,7 +110,6 @@ class GroqClient:
         headers = self._get_headers()
         payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
-        # --- ROBUST URL CONSTRUCTION ---
         url = self.base_url
         if "chat/completions" not in url:
             if not url.endswith("/"): url += "/"
@@ -176,17 +172,21 @@ class GroqClient:
                         console.print(Panel(display, title=f"🛡️  Clawt Request: {name}", border_style="yellow"))
                         
                         if not self.yolo_mode:
-                            choice = questionary.select(
+                            # SAFE CHOICE MAPPING TO PREVENT CRASHES
+                            choices_map = {
+                                "Allow Once": "y",
+                                "Always for this Session": "a",
+                                "Edit Command": "e",
+                                "Deny": "n",
+                                "Quit": "q"
+                            }
+                            label = questionary.select(
                                 "Allow this action?",
-                                choices=[
-                                    {"name": "Allow Once", "value": "y"},
-                                    {"name": "Always for this Session", "value": "a"},
-                                    {"name": "Edit Command", "value": "e"},
-                                    {"name": "Deny", "value": "n"},
-                                    {"name": "Quit", "value": "q"}
-                                ],
-                                default="y"
+                                choices=list(choices_map.keys()),
+                                default="Allow Once"
                             ).ask()
+
+                            choice = choices_map.get(label, "n")
 
                             if choice == "n": result = "Error: User denied permission."
                             elif choice == "e":
