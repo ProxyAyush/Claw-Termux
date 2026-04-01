@@ -15,14 +15,14 @@ from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, Stor
 
 console = Console()
 
-# Definitive 2026 Model List with correct Gemini prefixes
+# Corrected 2026 Flagship Model IDs
 MODEL_OPTIONS = [
-    "models/gemini-3.1-pro",
-    "models/gemini-3.1-flash",
-    "models/gemini-2.5-flash",
+    "gemini-3.1-pro-preview",
+    "gemini-3.1-pro-preview-customtools",
+    "gemini-3.1-flash-preview",
+    "gemini-3-deep-think-preview",
     "meta-llama/llama-4-scout-17b-16e-instruct",
-    "openai/gpt-oss-120b",
-    "deepseek-chat"
+    "openai/gpt-oss-120b"
 ]
 
 def print_banner():
@@ -114,7 +114,6 @@ def main(argv: list[str] | None = None) -> int:
                                 {"name": "Cancel", "value": "cancel"}
                             ]
                         ).ask()
-                        
                         if not action or action == "cancel": continue
                         
                         if action == "setup":
@@ -126,13 +125,10 @@ def main(argv: list[str] | None = None) -> int:
                             if new_model:
                                 (REPO_ROOT / ".groq_model").write_text(new_model)
                                 client.model = new_model
-                                # Auto-prefix if needed
-                                if "generativelanguage.googleapis.com" in client.base_url and not client.model.startswith("models/"):
-                                    client.model = f"models/{client.model}"
                                 console.print(f"[bold green]✅ Model set to:[/bold green] {client.model}")
                         elif action == "yolo":
                             client.yolo_mode = not client.yolo_mode
-                            console.print(f"🛡️  YOLO Mode: [bold]{'ON (Auto-Approve)' if client.yolo_mode else 'OFF (Protected)'}[/bold]")
+                            console.print(f"🛡️  YOLO Mode: [bold]{'ON' if client.yolo_mode else 'OFF'}[/bold]")
                         elif action == "update":
                             console.print("\n🚀 [bold cyan]Self-updating Clawt...[/bold cyan]")
                             import subprocess
@@ -155,17 +151,11 @@ def main(argv: list[str] | None = None) -> int:
                                             messages.append({"role": role, "content": msg})
                                         session_id = sid
                                         console.print(f"[bold green]✅ Resumed:[/bold green] {sid}")
-                                else: console.print("[yellow]No saved sessions found.[/yellow]")
                         elif action == "new":
                             messages = []
                             from uuid import uuid4
                             session_id = uuid4().hex
                             console.print(f"[bold blue]✨ Started fresh session: {session_id}[/bold blue]")
-                        continue
-
-                    if slash_cmd == '/yolo':
-                        client.yolo_mode = not client.yolo_mode
-                        console.print(f"🛡️  YOLO Mode: [bold]{'ON' if client.yolo_mode else 'OFF'}[/bold]")
                         continue
 
                 # Handle File Context (#)
@@ -183,7 +173,6 @@ def main(argv: list[str] | None = None) -> int:
                 console.print("\n[bold cyan]🤖 Clawt:[/bold cyan]")
                 res = client.chat_with_tools(messages)
                 if res == "User terminated session.": break
-                
                 console.print("\n" + "─" * console.width + "\n", style="dim")
                 
                 try:

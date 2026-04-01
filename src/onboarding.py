@@ -21,10 +21,10 @@ def run_onboarding() -> bool:
     
     providers = {
         "Groq": ("https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
-        "Google Gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.5-flash"),
+        "Google Gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-3.1-flash-preview"),
         "OpenRouter": ("https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-3.1-405b-instruct"),
-        "DeepSeek": ("https://api.deepseek.com/chat/completions", "deepseek-chat"),
-        "OpenAI": ("https://api.openai.com/v1/chat/completions", "gpt-4o"),
+        "DeepSeek": ("https://api.deepseek.com/chat/completions", "deepseek-v4"),
+        "OpenAI": ("https://api.openai.com/v1/chat/completions", "gpt-5-mini"),
         "Custom": ("", "")
     }
     

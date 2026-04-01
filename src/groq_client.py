@@ -18,7 +18,7 @@ console = Console()
 
 class GroqClient:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        # Load from absolute file paths
+        # 1. Load from absolute file paths
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         key_file = REPO_ROOT / ".groq_api_key"
         if not self.api_key and key_file.exists():
@@ -36,16 +36,16 @@ class GroqClient:
         if not self.base_url and url_file.exists():
             self.base_url = url_file.read_text().strip()
         
-        # --- DEFINITIVE GEMINI OPENAI-SHIM FIX ---
+        # --- DEFINITIVE GEMINI OPENAI-SHIM FIX (APRIL 2026) ---
         if self.base_url and "generativelanguage.googleapis.com" in self.base_url:
-            # The OpenAI-compatible base URL should end with /openai/
-            if not self.base_url.endswith("/openai/"):
-                if "/openai/chat/completions" in self.base_url:
-                    self.base_url = self.base_url.split("/chat/completions")[0]
-                elif not self.base_url.endswith("/"):
-                    self.base_url += "/"
+            # Ensure base_url ends with exactly /openai/
+            if "openai" not in self.base_url:
+                if not self.base_url.endswith("/"): self.base_url += "/"
+                self.base_url += "openai/"
+            elif not self.base_url.endswith("/"):
+                self.base_url += "/"
             
-            # OpenAI shim does NOT want the "models/" prefix
+            # OpenAI shim does NOT want "models/" prefix
             if self.model.startswith("models/"):
                 self.model = self.model.replace("models/", "")
         
@@ -89,7 +89,6 @@ class GroqClient:
         return self.master_system_prompt.format(memory_instruction=memory_instr)
 
     def _get_headers(self) -> Dict[str, str]:
-        # Gemini OpenAI shim uses standard Bearer token
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     def _compact_messages(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -105,19 +104,19 @@ class GroqClient:
         headers = self._get_headers()
         payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
-        # Determine the full URL
-        full_url = self.base_url
-        if not full_url.endswith("chat/completions"):
-            if not full_url.endswith("/"): full_url += "/"
-            full_url += "chat/completions"
+        # Construct the final endpoint URL
+        url = self.base_url
+        if not url.endswith("chat/completions"):
+            if not url.endswith("/"): url += "/"
+            url += "chat/completions"
 
         for attempt in range(3):
             with httpx.Client() as client:
                 try:
-                    response = client.post(full_url, headers=headers, json=payload, timeout=120.0)
+                    response = client.post(url, headers=headers, json=payload, timeout=120.0)
                     if response.status_code == 400:
                         error_body = response.text
-                        raise httpx.HTTPStatusError(f"400: {error_body}", request=response.request, response=response)
+                        raise httpx.HTTPStatusError(f"400 Bad Request: {error_body}", request=response.request, response=response)
                     response.raise_for_status()
                     return response.json()
                 except httpx.HTTPStatusError as e:
