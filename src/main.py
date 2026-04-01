@@ -10,35 +10,20 @@ from rich.prompt import Prompt
 from rich.table import Table
 from rich.markdown import Markdown
 from .groq_client import GroqClient, REPO_ROOT
-from .onboarding import run_onboarding, check_setup
+from .onboarding import run_onboarding, check_setup, GEMINI_MODELS, GROQ_MODELS
 from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, StoredSession
 
 console = Console()
-
-# --- PROVIDER-SPECIFIC MODEL LISTS (2026) ---
-GEMINI_MODELS = [
-    "gemini-3.1-pro-preview",
-    "gemini-3.1-flash-preview",
-    "gemini-3-deep-think-preview",
-    "gemini-2.5-flash"
-]
-
-GROQ_MODELS = [
-    "meta-llama/llama-4-scout-17b-16e-instruct",
-    "openai/gpt-oss-120b",
-    "qwen/qwen3-32b",
-    "llama-3.3-70b-versatile"
-]
 
 def print_banner():
     console.print(Panel.fit(
         "[bold cyan]🤖 CLAW-TERMUX (CLAWT)[/bold cyan]\n"
         "[bold white]Made by Dr. Ayush Yadav[/bold white]\n"
         "[dim]The Elite Engineering Agent for Android[/dim]\n"
-        "[bold green]Fallback Resilience: ON[/bold green]",
+        "[bold green]Precision Engine: v3.6 Active[/bold green]",
         border_style="cyan",
         padding=(1, 4),
-        title="[bold blue]v3.5 Elite[/bold blue]"
+        title="[bold blue]Elite Edition[/bold blue]"
     ))
 
 def build_parser() -> argparse.ArgumentParser:
@@ -114,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
                         action = questionary.select(
                             "Select a Command:",
                             choices=[
-                                {"name": "Setup (Provider/Keys)", "value": "setup"},
+                                {"name": "Setup (Provider/Keys/Model)", "value": "setup"},
                                 {"name": "Model Picker", "value": "model"},
                                 {"name": "Toggle YOLO Mode", "value": "yolo"},
                                 {"name": "Update from GitHub", "value": "update"},

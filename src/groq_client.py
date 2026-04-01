@@ -41,16 +41,15 @@ class GroqClient:
 
         self.provider = self._detect_provider()
         
-        # --- DEFINITIVE URL & MODEL CLEANUP ---
+        # --- DEFINITIVE URL & MODEL NORMALIZATION ---
         if self.provider == "Google Gemini":
-            # Strip the chat/completions if it exists to normalize the base
+            # Normalize Gemini Base URL
             if "/chat/completions" in self.base_url:
                 self.base_url = self.base_url.split("/chat/completions")[0]
             if not self.base_url.endswith("/"): self.base_url += "/"
-            # Ensure OpenAI shim format
             if "openai" not in self.base_url: self.base_url += "openai/"
             
-            # Gemini OpenAI shim hates "models/" prefix
+            # OpenAI shim hates "models/" prefix
             if self.model.startswith("models/"):
                 self.model = self.model.replace("models/", "")
         
@@ -114,10 +113,10 @@ class GroqClient:
         headers = self._get_headers()
         payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
-        # FINAL ENDPOINT CONSRUCTION
+        # --- ROBUST URL CONSTRUCTION ---
         url = self.base_url
-        if not url.endswith("/"): url += "/"
-        if not url.endswith("chat/completions"):
+        if "chat/completions" not in url:
+            if not url.endswith("/"): url += "/"
             url += "chat/completions"
 
         max_retries = 3
