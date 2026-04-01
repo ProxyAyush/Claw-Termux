@@ -15,7 +15,7 @@ from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, Stor
 
 console = Console()
 
-# Corrected 2026 Flagship Model IDs
+# Definitive 2026 Model List
 MODEL_OPTIONS = [
     "gemini-3.1-pro-preview",
     "gemini-3.1-pro-preview-customtools",
@@ -121,7 +121,17 @@ def main(argv: list[str] | None = None) -> int:
                                 console.print("[green]🔄 Reloading configuration...[/green]")
                                 client = GroqClient()
                         elif action == "model":
-                            new_model = questionary.select("Select a Model:", choices=MODEL_OPTIONS, default=client.model).ask()
+                            # SAFE PICKER LOGIC: Ensure current model exists in choices
+                            current_val = client.model
+                            if current_val not in MODEL_OPTIONS:
+                                current_val = MODEL_OPTIONS[0]
+                                
+                            new_model = questionary.select(
+                                "Select a Model:", 
+                                choices=MODEL_OPTIONS, 
+                                default=current_val
+                            ).ask()
+                            
                             if new_model:
                                 (REPO_ROOT / ".groq_model").write_text(new_model)
                                 client.model = new_model
