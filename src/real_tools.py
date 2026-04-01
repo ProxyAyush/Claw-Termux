@@ -5,7 +5,6 @@ import time
 import re
 from pathlib import Path
 from typing import Dict, Any, List
-from googlesearch import search
 
 REPO_ROOT = Path("/data/data/com.termux/files/home/Claw-Termux")
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -38,18 +37,26 @@ def edit_file(file_path: str, old_string: str, new_string: str) -> str:
     except Exception as e: return f"Error: {str(e)}"
 
 def google_search(query: str) -> str:
-    """High-Grade Google Search: Returns high-quality results with snippets."""
+    """Hybrid Elite Search: High-fidelity results using a robust bot-proof engine."""
     try:
-        # Perform advanced search with advanced parameters for 2026
-        results = search(query, num_results=8, advanced=True)
+        # Use Lite mode for 100% reliability in Termux
+        url = f"https://lite.duckduckgo.com/lite/search?q={query.replace(' ', '+')}"
+        cmd = f"curl -skL -A '{USER_AGENT}' '{url}'"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30.0)
+        
+        # High-fidelity parsing of titles and external links
+        links = re.findall(r'href="([^"]+)"[^>]*>(.*?)</a>', result.stdout)
         
         formatted = []
-        for i, res in enumerate(results):
-            formatted.append(f"{i+1}. {res.title}\n   Snippet: {res.description}\n   Link: {res.url}")
-            
-        return "\n\n".join(formatted) if formatted else "No high-grade results found."
-    except Exception as e:
-        return f"Error: Google search failed: {str(e)}. (Fallback to standard search might be needed if rate limited)"
+        for i, (link, title) in enumerate(links):
+            if "duckduckgo.com" not in link and not link.startswith("/") and len(formatted) < 8:
+                clean_title = re.sub(r'<.*?>', '', title).strip()
+                # Extract source name from link
+                source = link.split("//")[-1].split("/")[0]
+                formatted.append(f"{len(formatted)+1}. {clean_title}\n   Source: {source}\n   Link: {link}")
+        
+        return "\n\n".join(formatted) if formatted else "No results found. (Check internet connection)"
+    except Exception as e: return f"Error: Search engine failure: {str(e)}"
 
 def web_fetch(url: str) -> str:
     try:
@@ -57,7 +64,7 @@ def web_fetch(url: str) -> str:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30.0)
         content = re.sub(r'<(script|style).*?>.*?</\1>', '', result.stdout, flags=re.DOTALL | re.IGNORECASE)
         content = re.sub(r'<.*?>', ' ', content, flags=re.DOTALL)
-        return re.sub(r'\s+', ' ', content).strip()[:8000] # Increased to 8k for elite models
+        return re.sub(r'\s+', ' ', content).strip()[:8000]
     except Exception as e: return f"Error: {str(e)}"
 
 def spawn_agent(objective: str, role: str = "worker") -> str:
@@ -67,7 +74,7 @@ def spawn_agent(objective: str, role: str = "worker") -> str:
 
 TOOLS_METADATA = [
     {"type": "function", "function": {"name": "execute_bash", "description": "Run shell commands.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
-    {"type": "function", "function": {"name": "google_search", "description": "High-grade Google search for elite documentation and technical fixes.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "google_search", "description": "High-grade research tool for elite documentation and tech fixes.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
     {"type": "function", "function": {"name": "web_fetch", "description": "Read full text content of a URL.", "parameters": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}}},
     {"type": "function", "function": {"name": "read_file", "description": "Read a file.", "parameters": {"type": "object", "properties": {"file_path": {"type": "string"}}, "required": ["file_path"]}}},
     {"type": "function", "function": {"name": "edit_file", "description": "Edit a file.", "parameters": {"type": "object", "properties": {"file_path": {"type": "string"}, "old_string": {"type": "string"}, "new_string": {"type": "string"}}, "required": ["file_path", "old_string", "new_string"]}}},
