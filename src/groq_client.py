@@ -18,7 +18,7 @@ console = Console()
 
 class GroqClient:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        # Load from environment or absolute file paths
+        # Load from absolute file paths
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         key_file = REPO_ROOT / ".groq_api_key"
         if not self.api_key and key_file.exists():
@@ -29,7 +29,7 @@ class GroqClient:
         if not self.model and model_file.exists():
             self.model = model_file.read_text().strip()
         if not self.model:
-            self.model = "meta-llama/llama-4-scout-17b-16e-instruct"
+            self.model = "models/gemini-2.5-flash"
 
         self.base_url = os.environ.get("GROQ_API_URL")
         url_file = REPO_ROOT / ".groq_api_url"
@@ -38,6 +38,10 @@ class GroqClient:
         if not self.base_url:
             self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         
+        # --- MODEL ID FIXER (FOR GEMINI 404s) ---
+        if "generativelanguage.googleapis.com" in self.base_url and not self.model.startswith("models/"):
+            self.model = f"models/{self.model}"
+            
         self.yolo_mode = False 
         self.memory_context = self._load_memory()
 
@@ -52,12 +56,8 @@ class GroqClient:
 
 # Using Your Tools
 - Use dedicated tools instead of bash for file operations.
-- Parallelize independent tool calls.
-- Use `spawn_agent` for complex sub-tasks ($team mode).
+- Use `execute_bash` for Termux operations and Android file access (e.g. ls /sdcard).
 - Use `web_search` to stay up-to-date with 2026 tech.
-
-# Tone and Style
-- Be extra concise. Lead with the action.
 
 {memory_instruction}
 """
@@ -79,8 +79,6 @@ class GroqClient:
         return self.master_system_prompt.format(memory_instruction=memory_instr)
 
     def _get_headers(self) -> Dict[str, str]:
-        if "anthropic" in self.base_url.lower() and "messages" in self.base_url.lower():
-            return {"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     def _compact_messages(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -133,7 +131,6 @@ class GroqClient:
                     except: args = {}
                     
                     is_sensitive = name in ["execute_bash", "edit_file", "web_search", "web_fetch", "spawn_agent"]
-                    
                     if is_sensitive:
                         if name == "execute_bash":
                             display = f"[bold cyan]$ {args.get('command')}"
@@ -188,7 +185,12 @@ class GroqClient:
                     if len(result) > 8000:
                         result = result[:8000] + "\n... [Output truncated] ..."
                     
-                    messages.append({"role": "tool", "tool_call_id": tool_call["id"], "name": name, "content": result})
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call["id"],
+                        "name": name,
+                        "content": result
+                    })
                     console.print(f"[bold green]✓ Action Complete[/bold green]")
                         
             except httpx.HTTPStatusError as e:

@@ -6,6 +6,7 @@ import sys
 import questionary
 from rich.console import Console
 from rich.panel import Panel
+from rich.prompt import Prompt
 from rich.table import Table
 from rich.markdown import Markdown
 from .groq_client import GroqClient, REPO_ROOT
@@ -14,10 +15,11 @@ from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, Stor
 
 console = Console()
 
+# Definitive 2026 Model List with correct Gemini prefixes
 MODEL_OPTIONS = [
-    "gemini-3.1-pro",
-    "gemini-3.1-flash",
-    "gemini-2.5-flash",
+    "models/gemini-3.1-pro",
+    "models/gemini-3.1-flash",
+    "models/gemini-2.5-flash",
     "meta-llama/llama-4-scout-17b-16e-instruct",
     "openai/gpt-oss-120b",
     "deepseek-chat"
@@ -99,7 +101,6 @@ def main(argv: list[str] | None = None) -> int:
                     cmd_parts = raw_input.split()
                     slash_cmd = cmd_parts[0].lower()
                     
-                    # --- INTERACTIVE COMMAND MENU ---
                     if slash_cmd == '/' or slash_cmd == '/help':
                         action = questionary.select(
                             "Select a Command:",
@@ -125,7 +126,10 @@ def main(argv: list[str] | None = None) -> int:
                             if new_model:
                                 (REPO_ROOT / ".groq_model").write_text(new_model)
                                 client.model = new_model
-                                console.print(f"[bold green]✅ Model set to:[/bold green] {new_model}")
+                                # Auto-prefix if needed
+                                if "generativelanguage.googleapis.com" in client.base_url and not client.model.startswith("models/"):
+                                    client.model = f"models/{client.model}"
+                                console.print(f"[bold green]✅ Model set to:[/bold green] {client.model}")
                         elif action == "yolo":
                             client.yolo_mode = not client.yolo_mode
                             console.print(f"🛡️  YOLO Mode: [bold]{'ON (Auto-Approve)' if client.yolo_mode else 'OFF (Protected)'}[/bold]")
@@ -159,7 +163,6 @@ def main(argv: list[str] | None = None) -> int:
                             console.print(f"[bold blue]✨ Started fresh session: {session_id}[/bold blue]")
                         continue
 
-                    # (Direct commands like /yolo or /model <id> still work for power users)
                     if slash_cmd == '/yolo':
                         client.yolo_mode = not client.yolo_mode
                         console.print(f"🛡️  YOLO Mode: [bold]{'ON' if client.yolo_mode else 'OFF'}[/bold]")
