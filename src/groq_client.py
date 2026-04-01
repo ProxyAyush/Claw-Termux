@@ -63,10 +63,10 @@ class GroqClient:
 4. FORCED VERIFICATION: Forbidden from reporting complete until tests/type-checks pass.
 
 # Using Your Tools
+- Use `list_dir` to explore directories. It marks folders with a trailing slash (/).
 - Use dedicated tools instead of bash for file operations.
-- Use `google_search` for high-grade documentation and tech fixes.
-- Use `web_fetch` to read the full content of technical pages.
 - Use `execute_bash` for Termux operations and Android file access (e.g. ls /sdcard).
+- Use `google_search` to stay up-to-date with 2026 tech.
 
 {memory_instruction}
 """
@@ -133,7 +133,7 @@ class GroqClient:
                         else:
                             fallback_model = "gemini-3.1-flash-preview"
                             if self.model != fallback_model and self.provider == "Google Gemini":
-                                console.print(f"\n[orange3]⚠️  Rate limit reached. Falling back to {fallback_model}...[/orange3]")
+                                console.print(f"\n[orange3]⚠️  Rate limit. Falling back to {fallback_model}...[/orange3]")
                                 self.model = fallback_model
                                 payload["model"] = fallback_model
                                 response = client.post(url, headers=headers, json=payload, timeout=120.0)
