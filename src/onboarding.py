@@ -6,8 +6,17 @@ from pathlib import Path
 REPO_ROOT = Path("/data/data/com.termux/files/home/Claw-Termux")
 
 # 2026 Stable Model IDs for Setup
-GEMINI_MODELS = ["gemini-3.1-pro-preview", "gemini-3.1-flash-preview", "gemini-3-deep-think-preview", "gemini-2.5-flash"]
-GROQ_MODELS = ["meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-120b", "llama-3.3-70b-versatile"]
+GEMINI_MODELS = [
+    "gemini-3.1-pro-preview", 
+    "gemini-3-flash-preview", 
+    "gemini-2.5-pro", 
+    "gemini-2.5-flash"
+]
+GROQ_MODELS = [
+    "meta-llama/llama-4-scout-17b-16e-instruct", 
+    "openai/gpt-oss-120b", 
+    "llama-3.3-70b-versatile"
+]
 
 def check_setup() -> bool:
     return (REPO_ROOT / ".groq_api_key").exists() and (REPO_ROOT / ".groq_api_url").exists()
@@ -42,13 +51,11 @@ def run_onboarding() -> bool:
         model = questionary.text("Enter model name:").ask()
     else:
         api_key = questionary.password(f"Enter your {provider_name} API Key:").ask()
-        # Pick model during setup to ensure alignment
         if provider_name == "Google Gemini":
-            model = questionary.select("Select Initial Gemini Model:", choices=GEMINI_MODELS).ask()
+            model = questionary.select("Select Initial Gemini Model:", choices=GEMINI_MODELS, default="gemini-3-flash-preview").ask()
         elif provider_name == "Groq":
-            model = questionary.select("Select Initial Groq Model:", choices=GROQ_MODELS).ask()
+            model = questionary.select("Select Initial Groq Model:", choices=GROQ_MODELS, default="meta-llama/llama-4-scout-17b-16e-instruct").ask()
         else:
-            # Fallback for others
             model = "gpt-4o" if provider_name == "OpenAI" else "meta-llama/llama-3.1-405b-instruct"
         
     if not api_key:

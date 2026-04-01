@@ -29,7 +29,7 @@ class GroqClient:
         if not self.model and model_file.exists():
             self.model = model_file.read_text().strip()
         if not self.model:
-            self.model = "gemini-3.1-flash-preview"
+            self.model = "gemini-3-flash-preview"
 
         self.base_url = os.environ.get("GROQ_API_URL")
         url_file = REPO_ROOT / ".groq_api_url"
@@ -47,6 +47,8 @@ class GroqClient:
                 self.base_url = self.base_url.split("/chat/completions")[0]
             if not self.base_url.endswith("/"): self.base_url += "/"
             if "openai" not in self.base_url: self.base_url += "openai/"
+            
+            # OpenAI shim hates "models/" prefix
             if self.model.startswith("models/"):
                 self.model = self.model.replace("models/", "")
         
@@ -63,10 +65,10 @@ class GroqClient:
 4. FORCED VERIFICATION: Forbidden from reporting complete until tests/type-checks pass.
 
 # Using Your Tools
-- Use `list_dir` to explore directories. It marks folders with a trailing slash (/).
+- Use `list_dir` to explore directories. Folders end with /.
 - Use dedicated tools instead of bash for file operations.
 - Use `execute_bash` for Termux operations and Android file access (e.g. ls /sdcard).
-- Use `google_search` to stay up-to-date with 2026 tech.
+- Use `google_search` for elite technical indexing.
 
 {memory_instruction}
 """
@@ -111,6 +113,7 @@ class GroqClient:
         headers = self._get_headers()
         payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
+        # --- ROBUST URL CONSTRUCTION ---
         url = self.base_url
         if "chat/completions" not in url:
             if not url.endswith("/"): url += "/"
@@ -131,7 +134,8 @@ class GroqClient:
                             time.sleep(2 * (attempt + 1))
                             continue
                         else:
-                            fallback_model = "gemini-3.1-flash-preview"
+                            # CORRECT FALLBACK MODEL ID FOR 2026
+                            fallback_model = "gemini-3-flash-preview"
                             if self.model != fallback_model and self.provider == "Google Gemini":
                                 console.print(f"\n[orange3]⚠️  Rate limit. Falling back to {fallback_model}...[/orange3]")
                                 self.model = fallback_model
@@ -198,7 +202,14 @@ class GroqClient:
                         console.print(Panel(preview, title="📝 Output", border_style="dim"))
 
                     if len(result) > 8000: result = result[:8000] + "\n... [Truncated] ..."
-                    messages.append({"role": "tool", "tool_call_id": tool_call["id"], "name": name, "content": result})
+                    
+                    # --- CRITICAL FIX: INCLUDE NAME IN TOOL RESPONSE ---
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call["id"],
+                        "name": name, # Google Shim REQUIRES this
+                        "content": result
+                    })
                     console.print(f"[bold green]✓ Done[/bold green]")
                         
             except httpx.HTTPStatusError as e:

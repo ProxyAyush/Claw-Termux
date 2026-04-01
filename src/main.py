@@ -20,10 +20,10 @@ def print_banner():
         "[bold cyan]🤖 CLAW-TERMUX (CLAWT)[/bold cyan]\n"
         "[bold white]Made by Dr. Ayush Yadav[/bold white]\n"
         "[dim]The Elite Engineering Agent for Android[/dim]\n"
-        "[bold green]Precision Engine: v3.6 Active[/bold green]",
+        "[bold green]Elite Precision Build: v3.7 Active[/bold green]",
         border_style="cyan",
         padding=(1, 4),
-        title="[bold blue]Elite Edition[/bold blue]"
+        title="[bold blue]Frontier Grade[/bold blue]"
     ))
 
 def build_parser() -> argparse.ArgumentParser:
@@ -115,7 +115,6 @@ def main(argv: list[str] | None = None) -> int:
                                 console.print("[green]🔄 Reloading configuration...[/green]")
                                 client = GroqClient()
                         elif action == "model":
-                            # Filter list based on provider
                             options = GEMINI_MODELS if client.provider == "Google Gemini" else GROQ_MODELS
                             new_model = questionary.select(
                                 f"Select a {client.provider} Model:", 
