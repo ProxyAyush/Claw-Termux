@@ -64,8 +64,9 @@ class GroqClient:
 
 # Using Your Tools
 - Use dedicated tools instead of bash for file operations.
+- Use `google_search` for high-grade documentation and tech fixes.
+- Use `web_fetch` to read the full content of technical pages.
 - Use `execute_bash` for Termux operations and Android file access (e.g. ls /sdcard).
-- Use `web_search` to stay up-to-date with 2026 tech.
 
 {memory_instruction}
 """
@@ -132,7 +133,7 @@ class GroqClient:
                         else:
                             fallback_model = "gemini-3.1-flash-preview"
                             if self.model != fallback_model and self.provider == "Google Gemini":
-                                console.print(f"\n[orange3]⚠️  Rate limit. Falling back to {fallback_model}...[/orange3]")
+                                console.print(f"\n[orange3]⚠️  Rate limit reached. Falling back to {fallback_model}...[/orange3]")
                                 self.model = fallback_model
                                 payload["model"] = fallback_model
                                 response = client.post(url, headers=headers, json=payload, timeout=120.0)
@@ -163,35 +164,23 @@ class GroqClient:
                     try: args = json.loads(tool_call["function"]["arguments"])
                     except: args = {}
                     
-                    is_sensitive = name in ["execute_bash", "edit_file", "web_search", "web_fetch", "spawn_agent"]
+                    is_sensitive = name in ["execute_bash", "edit_file", "google_search", "web_fetch", "spawn_agent"]
                     if is_sensitive:
                         if name == "execute_bash": display = f"[bold cyan]$ {args.get('command')}"
-                        elif name == "web_search": display = f"[bold yellow]Searching: {args.get('query')}"
+                        elif name == "google_search": display = f"[bold yellow]Google: {args.get('query')}"
                         else: display = f"[bold magenta]⚡ {name}({args})"
 
                         console.print(Panel(display, title=f"🛡️  Clawt Request: {name}", border_style="yellow"))
                         
                         if not self.yolo_mode:
-                            # SAFE CHOICE MAPPING TO PREVENT CRASHES
-                            choices_map = {
-                                "Allow Once": "y",
-                                "Always for this Session": "a",
-                                "Edit Command": "e",
-                                "Deny": "n",
-                                "Quit": "q"
-                            }
-                            label = questionary.select(
-                                "Allow this action?",
-                                choices=list(choices_map.keys()),
-                                default="Allow Once"
-                            ).ask()
-
+                            choices_map = {"Allow Once": "y", "Always for this Session": "a", "Edit Command": "e", "Deny": "n", "Quit": "q"}
+                            label = questionary.select("Allow this action?", choices=list(choices_map.keys()), default="Allow Once").ask()
                             choice = choices_map.get(label, "n")
 
                             if choice == "n": result = "Error: User denied permission."
                             elif choice == "e":
                                 if name == "execute_bash": args["command"] = questionary.text("Edit command:", default=args.get("command", "")).ask()
-                                elif name == "web_search": args["query"] = questionary.text("Edit search query:", default=args.get("query", "")).ask()
+                                elif name == "google_search": args["query"] = questionary.text("Edit search query:", default=args.get("query", "")).ask()
                                 result = handle_tool_call(name, args)
                             elif choice == "a":
                                 self.yolo_mode = True
