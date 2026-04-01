@@ -3,9 +3,9 @@ import argparse
 import os
 import re
 import sys
+import questionary
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt
 from rich.table import Table
 from rich.markdown import Markdown
 from .groq_client import GroqClient, REPO_ROOT
@@ -14,14 +14,14 @@ from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, Stor
 
 console = Console()
 
-MODEL_OPTIONS = {
-    "1": "gemini-3.1-pro",
-    "2": "gemini-3.1-flash",
-    "3": "gemini-2.5-flash",
-    "4": "meta-llama/llama-4-scout-17b-16e-instruct",
-    "5": "openai/gpt-oss-120b",
-    "6": "deepseek-chat"
-}
+MODEL_OPTIONS = [
+    "gemini-3.1-pro",
+    "gemini-3.1-flash",
+    "gemini-2.5-flash",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "openai/gpt-oss-120b",
+    "deepseek-chat"
+]
 
 def print_banner():
     console.print(Panel.fit(
@@ -69,7 +69,6 @@ def main(argv: list[str] | None = None) -> int:
     if cmd == 'chat':
         print_banner()
         client = GroqClient()
-        # Initialize YOLO mode from args
         client.yolo_mode = getattr(args, 'yolo', False)
         
         session_id = getattr(args, 'session', None)
@@ -107,9 +106,10 @@ def main(argv: list[str] | None = None) -> int:
                         table.add_row("/help", "Show this help menu")
                         table.add_row("/setup", "Change API keys or Provider")
                         table.add_row("/yolo", "Toggle auto-approve (YOLO) mode")
-                        table.add_row("/model", "Interactive model picker")
+                        table.add_row("/model", "Interactive model picker (Arrow Keys)")
                         table.add_row("/update", "Pull latest code and restart")
                         table.add_row("/new", "Start a fresh session")
+                        table.add_row("/load", "Load a saved session (Arrow Keys)")
                         console.print(table)
                         continue
                     
@@ -125,18 +125,16 @@ def main(argv: list[str] | None = None) -> int:
                         continue
 
                     if slash_cmd == '/model':
-                        table = Table(title="Select a Model", border_style="magenta")
-                        table.add_column("ID", style="magenta")
-                        table.add_column("Model Name")
-                        for k, v in MODEL_OPTIONS.items():
-                            table.add_row(k, f"{v} {'(Active)' if v == client.model else ''}")
-                        console.print(table)
+                        new_model = questionary.select(
+                            "Select a Model:",
+                            choices=MODEL_OPTIONS,
+                            default=client.model if client.model in MODEL_OPTIONS else MODEL_OPTIONS[0]
+                        ).ask()
                         
-                        choice = Prompt.ask("Select Model", choices=list(MODEL_OPTIONS.keys()))
-                        new_model = MODEL_OPTIONS[choice]
-                        (REPO_ROOT / ".groq_model").write_text(new_model)
-                        client.model = new_model
-                        console.print(f"[bold green]✅ Model set to:[/bold green] {new_model}")
+                        if new_model:
+                            (REPO_ROOT / ".groq_model").write_text(new_model)
+                            client.model = new_model
+                            console.print(f"[bold green]✅ Model set to:[/bold green] {new_model}")
                         continue
 
                     if slash_cmd == '/update':
@@ -155,6 +153,27 @@ def main(argv: list[str] | None = None) -> int:
                         from uuid import uuid4
                         session_id = uuid4().hex
                         console.print(f"[bold blue]✨ Started fresh session: {session_id}[/bold blue]")
+                        continue
+                        
+                    if slash_cmd == '/load':
+                        if DEFAULT_SESSION_DIR.exists():
+                            sessions = [s.stem for s in DEFAULT_SESSION_DIR.glob("*.json")]
+                            if not sessions:
+                                console.print("[yellow]No saved sessions found.[/yellow]")
+                                continue
+                                
+                            sid = questionary.select("Select a Session:", choices=sessions).ask()
+                            if sid:
+                                try:
+                                    stored = load_session(sid)
+                                    messages = []
+                                    for i, msg in enumerate(stored.messages):
+                                        role = "user" if i % 2 == 0 else "assistant"
+                                        messages.append({"role": role, "content": msg})
+                                    session_id = sid
+                                    console.print(f"[bold green]✅ Resumed:[/bold green] {sid}")
+                                except Exception as e: console.print(f"[bold red]❌ Load failed: {str(e)}[/bold red]")
+                        else: console.print("[yellow]No session directory found.[/yellow]")
                         continue
 
                 # Handle File Context (#)

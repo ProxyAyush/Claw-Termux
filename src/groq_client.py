@@ -2,6 +2,7 @@ import os
 import httpx
 import json
 import time
+import questionary
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from rich.console import Console
@@ -9,7 +10,6 @@ from rich.panel import Panel
 from rich.live import Live
 from rich.status import Status
 from rich.markdown import Markdown
-from rich.prompt import Prompt
 from .real_tools import TOOLS_METADATA, handle_tool_call
 
 # Absolute path to the repository root
@@ -38,7 +38,7 @@ class GroqClient:
         if not self.base_url:
             self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         
-        self.yolo_mode = False # Default to interactive
+        self.yolo_mode = False 
         self.memory_context = self._load_memory()
 
         # The "EMPLOYEE-GRADE" Master System Prompt
@@ -132,7 +132,6 @@ class GroqClient:
                     try: args = json.loads(tool_call["function"]["arguments"])
                     except: args = {}
                     
-                    # --- INTERACTIVE PERMISSION SYSTEM ---
                     is_sensitive = name in ["execute_bash", "edit_file", "web_search", "web_fetch", "spawn_agent"]
                     
                     if is_sensitive:
@@ -146,19 +145,25 @@ class GroqClient:
                         console.print(Panel(display, title=f"🛡️  Clawt Request: {name}", border_style="yellow"))
                         
                         if not self.yolo_mode:
-                            choice = Prompt.ask(
-                                "[bold yellow]Allow this action?[/bold yellow]",
-                                choices=["y", "n", "e", "a", "q"],
+                            choice = questionary.select(
+                                "Allow this action?",
+                                choices=[
+                                    {"name": "Allow Once", "value": "y"},
+                                    {"name": "Always for this Session", "value": "a"},
+                                    {"name": "Edit Command", "value": "e"},
+                                    {"name": "Deny", "value": "n"},
+                                    {"name": "Quit", "value": "q"}
+                                ],
                                 default="y"
-                            )
-                            # y=Yes, n=No, e=Edit, a=Always (Session), q=Quit
+                            ).ask()
+
                             if choice == "n":
                                 result = "Error: User denied permission for this action."
                             elif choice == "e":
                                 if name == "execute_bash":
-                                    args["command"] = Prompt.ask("Edit command", default=args.get("command"))
+                                    args["command"] = questionary.text("Edit command:", default=args.get("command", "")).ask()
                                 elif name == "web_search":
-                                    args["query"] = Prompt.ask("Edit search query", default=args.get("query"))
+                                    args["query"] = questionary.text("Edit search query:", default=args.get("query", "")).ask()
                                 result = handle_tool_call(name, args)
                             elif choice == "a":
                                 self.yolo_mode = True
@@ -171,12 +176,10 @@ class GroqClient:
                         else:
                             result = handle_tool_call(name, args)
                     else:
-                        # Non-sensitive tools (like read_file, glob) run automatically
                         if not self.yolo_mode:
                             console.print(f"[dim]⚡ Clawt: {name}[/dim]")
                         result = handle_tool_call(name, args)
 
-                    # --- RESULT RENDERING ---
                     if not isinstance(result, str): result = str(result)
                     if name == "execute_bash":
                         preview = result[:800] + "..." if len(result) > 800 else result
