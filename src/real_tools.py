@@ -49,7 +49,6 @@ def edit_file(file_path: str, old_string: str, new_string: str) -> str:
         if old_string not in content:
             return f"Error: Could not find exact match for 'old_string' in {file_path}."
         
-        # Ensure only one replacement happens to prevent accidental corruption
         if content.count(old_string) > 1:
             return f"Error: Multiple matches found for 'old_string'. Be more specific with your context."
             
@@ -60,80 +59,87 @@ def edit_file(file_path: str, old_string: str, new_string: str) -> str:
         return f"Error: {str(e)}"
 
 def spawn_agent(objective: str, role: str = "worker") -> str:
-    """
-    SWARMING MODE ($team): Launches a specialized sub-agent to handle a sub-task.
-    Roles: research, worker, verification.
-    """
+    """SWARMING MODE ($team): Launches a specialized sub-agent."""
     from .groq_client import GroqClient
     client = GroqClient()
     messages = [{"role": "user", "content": objective}]
-    # Run the sub-agent loop
     return client.chat_with_tools(messages, role=role)
 
-def mcp_tool(server: str, tool: str, arguments: Dict[str, Any]) -> str:
-    """Placeholder for Model Context Protocol (MCP) tool integration."""
-    return f"MCP Tool {tool} on {server} called with {arguments}. (Integration Pending)"
-
-# --- DEFINITIONS FOR THE LLM ---
+# --- CORRECTED TOOL SCHEMA FOR GEMINI/OPENAI ---
 TOOLS_METADATA = [
     {
-        "name": "execute_bash",
-        "description": "Run any shell command in Termux. Use for git, testing, or system info.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "command": {"type": "string", "description": "The bash command to execute."}
-            },
-            "required": ["command"]
+        "type": "function",
+        "function": {
+            "name": "execute_bash",
+            "description": "Run any shell command in Termux. Use for git, testing, or listing android files in /sdcard.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "The bash command to execute."}
+                },
+                "required": ["command"]
+            }
         }
     },
     {
-        "name": "read_file",
-        "description": "Read a file with line numbers. Use start_line and end_line for large files.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "file_path": {"type": "string"},
-                "start_line": {"type": "integer", "default": 1},
-                "end_line": {"type": "integer"}
-            },
-            "required": ["file_path"]
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read a file with line numbers. Use start_line and end_line for large files.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string"},
+                    "start_line": {"type": "integer", "default": 1},
+                    "end_line": {"type": "integer"}
+                },
+                "required": ["file_path"]
+            }
         }
     },
     {
-        "name": "edit_file",
-        "description": "Surgically replace a specific block of text in a file. Provide the EXACT old_string to match.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "file_path": {"type": "string"},
-                "old_string": {"type": "string", "description": "Exact text to replace."},
-                "new_string": {"type": "string", "description": "Replacement text."}
-            },
-            "required": ["file_path", "old_string", "new_string"]
+        "type": "function",
+        "function": {
+            "name": "edit_file",
+            "description": "Surgically replace a specific block of text in a file.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string"},
+                    "old_string": {"type": "string", "description": "Exact text to replace."},
+                    "new_string": {"type": "string", "description": "Replacement text."}
+                },
+                "required": ["file_path", "old_string", "new_string"]
+            }
         }
     },
     {
-        "name": "spawn_agent",
-        "description": "SWARMING MODE: Use for complex sub-tasks. Objective should be a clear prompt for the agent.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "objective": {"type": "string"},
-                "role": {"type": "string", "enum": ["worker", "research", "verification"], "default": "worker"}
-            },
-            "required": ["objective"]
+        "type": "function",
+        "function": {
+            "name": "spawn_agent",
+            "description": "SWARMING MODE: Use for complex sub-tasks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "objective": {"type": "string"},
+                    "role": {"type": "string", "enum": ["worker", "research", "verification"], "default": "worker"}
+                },
+                "required": ["objective"]
+            }
         }
     },
     {
-        "name": "glob_files",
-        "description": "Find files matching a pattern (e.g. src/**/*.py).",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "pattern": {"type": "string"}
-            },
-            "required": ["pattern"]
+        "type": "function",
+        "function": {
+            "name": "glob_files",
+            "description": "Find files matching a pattern.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string"}
+                },
+                "required": ["pattern"]
+            }
         }
     }
 ]

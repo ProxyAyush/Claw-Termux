@@ -17,6 +17,7 @@ console = Console()
 
 class GroqClient:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+        # Load from absolute file paths
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         key_file = REPO_ROOT / ".groq_api_key"
         if not self.api_key and key_file.exists():
@@ -53,7 +54,7 @@ class GroqClient:
 - Use dedicated tools (read_file, edit_file, glob_files, grep_files) instead of bash for file operations.
 - Parallelize independent tool calls.
 - Use `spawn_agent` for complex sub-tasks ($team mode).
-- Use `mcp_tool` for external knowledge (GitHub/Search).
+- Use `mcp_tool` for external knowledge.
 
 # Tone and Style
 - Be extra concise. Lead with the action.
@@ -93,13 +94,18 @@ class GroqClient:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     def _compact_messages(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
-        """Ensures the message history doesn't exceed API limits by keeping only recent turns."""
-        if len(messages) <= 15:
+        """
+        CODEX-STYLE SLIDING WINDOW:
+        Always keeps: 
+        1. System Prompt (Index 0)
+        2. Initial User Objective (Index 1)
+        3. Last 10 messages for immediate context.
+        """
+        if len(messages) <= 12:
             return messages
-        # Always keep the system prompt (at index 0)
-        compacted = [messages[0]]
-        # Keep the 14 most recent messages
-        compacted.extend(messages[-14:])
+        
+        compacted = [messages[0], messages[1]] # Keep system + original task
+        compacted.extend(messages[-10:]) # Keep most recent 10 messages
         return compacted
 
     def chat(self, messages: List[Dict[str, str]], role: str = "coordinator") -> Dict[Any, Any]:
@@ -109,10 +115,11 @@ class GroqClient:
         if not any(m.get("role") == "system" for m in messages):
             messages.insert(0, {"role": "system", "content": self.get_system_prompt(role)})
 
-        # Compact history to prevent 413 Payload Too Large
+        # Smart Sliding Window Context
         messages = self._compact_messages(messages)
 
         headers = self._get_headers()
+        # Ensure payload uses the correct "type": "function" nesting for Gemini
         payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
         # Exponential Backoff for 429 errors
@@ -124,7 +131,6 @@ class GroqClient:
                 try:
                     response = client.post(self.base_url, headers=headers, json=payload, timeout=120.0)
                     if response.status_code == 400:
-                        # Detailed 400 Diagnostics
                         error_body = response.text
                         raise httpx.HTTPStatusError(f"400 Bad Request: {error_body}", request=response.request, response=response)
                     
@@ -143,7 +149,6 @@ class GroqClient:
         while iteration < MAX_ITERATIONS:
             iteration += 1
             try:
-                # Elite "Thinking" status
                 with Status(f"[bold blue]Clawt thinking... ({iteration}/{MAX_ITERATIONS})", console=console) as status:
                     response = self.chat(messages, role)
                     message = response["choices"][0]["message"]
@@ -161,17 +166,13 @@ class GroqClient:
                     try: args = json.loads(tool_call["function"]["arguments"])
                     except: args = {}
                     
-                    # Elite Tool Rendering
                     if name == "execute_bash":
                         cmd = args.get("command", "")
                         console.print(Panel(f"[bold cyan]$ {cmd}", title="🛠️ Clawt Shell", border_style="cyan"))
                     else:
                         console.print(f"[bold magenta]⚡ Clawt: {name}[/bold magenta]")
 
-                    # Execute Tool
                     result = handle_tool_call(name, args)
-                    
-                    # Tool Result Rendering
                     if not isinstance(result, str): result = str(result)
                     
                     if name == "execute_bash":
@@ -188,13 +189,12 @@ class GroqClient:
                         "name": name,
                         "content": result
                     })
-                    
                     console.print(f"[bold green]✓ Done[/bold green]")
                         
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 413:
-                    if len(messages) > 2:
-                        messages = [messages[0], messages[-1]]
+                    if len(messages) > 3:
+                        messages = [messages[0], messages[1], messages[-1]]
                         continue
                 raise e
         return "Max iterations reached."
