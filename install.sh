@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-# Clawt Installer for Android
+# Clawt Installer for Android (2026 Elite Edition)
 set -e
 
 echo "🚀 Starting Clawt Installation..."
@@ -12,9 +12,9 @@ pkg update -y
 echo "📦 Installing system dependencies (python, git, curl)..."
 pkg install python git curl -y
 
-# 2. Install Python dependencies
-echo "🐍 Installing Python libraries..."
-pip install httpx
+# 2. Install Python dependencies (Elite TUI stack)
+echo "🐍 Installing Python libraries (httpx, rich, questionary)..."
+pip install httpx rich questionary
 
 # 3. Setup Alias for easy access
 setup_alias() {
@@ -39,12 +39,11 @@ setup_alias "$HOME/.zshrc"
 # 4. Final Instructions
 echo -e "\n"
 echo "========================================="
-echo "🎉 Clawt Installation Complete!"
+echo "🎉 Clawt Elite Installation Complete!"
 echo "========================================="
 echo "To start using the agent:"
 echo "1. Run: source ~/.bashrc (or restart Termux)"
 echo "2. Run: clawt"
 echo ""
-echo "Note: Typing 'clawt' will now start the chat by default."
-echo "You can also run 'clawt update' to pull new changes."
+echo "✨ Features Ready: Arrow-key navigation, Rich Dashboard, Web Search."
 echo "========================================="
