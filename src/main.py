@@ -15,15 +15,16 @@ from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, Stor
 
 console = Console()
 
-def print_banner():
+def print_banner(slow_mode: bool = True):
+    status_color = "green" if slow_mode else "yellow"
     console.print(Panel.fit(
         "[bold cyan]🤖 CLAW-TERMUX (CLAWT)[/bold cyan]\n"
         "[bold white]Made by Dr. Ayush Yadav[/bold white]\n"
         "[dim]The Elite Engineering Agent for Android[/dim]\n"
-        "[bold green]Elite Precision Build: v3.7 Active[/bold green]",
+        f"[{status_color}]Slow Mode: {'ON' if slow_mode else 'OFF'}[/{status_color}] [dim]| Free Tier Optimized[/dim]",
         border_style="cyan",
         padding=(1, 4),
-        title="[bold blue]Frontier Grade[/bold blue]"
+        title="[bold blue]v4.0 Safe & Smooth[/bold blue]"
     ))
 
 def build_parser() -> argparse.ArgumentParser:
@@ -63,8 +64,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if cmd == 'chat':
-        print_banner()
         client = GroqClient()
+        print_banner(client.slow_mode)
         client.yolo_mode = getattr(args, 'yolo', False)
         
         session_id = getattr(args, 'session', None)
@@ -82,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
             from uuid import uuid4
             session_id = uuid4().hex
         
-        console.print(f"[bold green]💬 Clawt Active[/bold green] [dim]| Provider: {client.provider} | Model: {client.model}[/dim]")
+        console.print(f"[bold green]💬 Clawt Active[/bold green] [dim]| Model: {client.model} | Slow Mode: {'ON' if client.slow_mode else 'OFF'}[/dim]")
         console.print("[dim]Type '/' for commands, or 'exit' to stop.[/dim]\n")
         
         while True:
@@ -101,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
                             choices=[
                                 {"name": "Setup (Provider/Keys/Model)", "value": "setup"},
                                 {"name": "Model Picker", "value": "model"},
+                                {"name": "Toggle Slow Mode", "value": "slow"},
                                 {"name": "Toggle YOLO Mode", "value": "yolo"},
                                 {"name": "Update from GitHub", "value": "update"},
                                 {"name": "Load Session", "value": "load"},
@@ -125,6 +127,9 @@ def main(argv: list[str] | None = None) -> int:
                                 (REPO_ROOT / ".groq_model").write_text(new_model)
                                 client.model = new_model
                                 console.print(f"[bold green]✅ Model set to:[/bold green] {client.model}")
+                        elif action == "slow":
+                            client.slow_mode = not client.slow_mode
+                            console.print(f"🐢 Slow Mode: [bold]{'ON' if client.slow_mode else 'OFF'}[/bold]")
                         elif action == "yolo":
                             client.yolo_mode = not client.yolo_mode
                             console.print(f"🛡️  YOLO Mode: [bold]{'ON' if client.yolo_mode else 'OFF'}[/bold]")

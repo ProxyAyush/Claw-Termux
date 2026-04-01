@@ -5,13 +5,14 @@ from pathlib import Path
 # Absolute path to the repository root
 REPO_ROOT = Path("/data/data/com.termux/files/home/Claw-Termux")
 
-# 2026 Stable Model IDs for Setup
+# --- 2026 DEFINITIVE FREE TIER MODELS (Google AI Studio) ---
 GEMINI_MODELS = [
-    "gemini-3.1-pro-preview", 
-    "gemini-3-flash-preview", 
-    "gemini-2.5-pro", 
-    "gemini-2.5-flash"
+    "gemini-3.1-flash-lite-preview", # Best for starting (High Limit)
+    "gemini-3-flash-preview",      # Agentic Reasoning
+    "gemini-2.5-flash-lite",       # Stable Workhorse
+    "gemma-3-27b"                  # High-Volume Open Model
 ]
+
 GROQ_MODELS = [
     "meta-llama/llama-4-scout-17b-16e-instruct", 
     "openai/gpt-oss-120b", 
@@ -52,7 +53,11 @@ def run_onboarding() -> bool:
     else:
         api_key = questionary.password(f"Enter your {provider_name} API Key:").ask()
         if provider_name == "Google Gemini":
-            model = questionary.select("Select Initial Gemini Model:", choices=GEMINI_MODELS, default="gemini-3-flash-preview").ask()
+            model = questionary.select(
+                "Select Initial Gemini Model (Lite recommended for high limits):", 
+                choices=GEMINI_MODELS, 
+                default="gemini-3.1-flash-lite-preview"
+            ).ask()
         elif provider_name == "Groq":
             model = questionary.select("Select Initial Groq Model:", choices=GROQ_MODELS, default="meta-llama/llama-4-scout-17b-16e-instruct").ask()
         else:

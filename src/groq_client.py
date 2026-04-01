@@ -18,7 +18,6 @@ console = Console()
 
 class GroqClient:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        # Load from absolute file paths
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         key_file = REPO_ROOT / ".groq_api_key"
         if not self.api_key and key_file.exists():
@@ -29,7 +28,7 @@ class GroqClient:
         if not self.model and model_file.exists():
             self.model = model_file.read_text().strip()
         if not self.model:
-            self.model = "gemini-2.5-flash" # Use stable as default if none set
+            self.model = "gemini-3.1-flash-lite-preview" 
 
         self.base_url = os.environ.get("GROQ_API_URL")
         url_file = REPO_ROOT / ".groq_api_url"
@@ -51,9 +50,12 @@ class GroqClient:
                 self.model = self.model.replace("models/", "")
         
         self.yolo_mode = False 
+        self.slow_mode = True # Enabled by default for Free Tier safety
+        self._last_request_time = 0
+        self._tokens_used = 0
+        
         self.memory_context = self._load_memory()
 
-        # Master System Prompt
         self.master_system_prompt = """You are Clawt, an interactive agent specializing in high-end software engineering. 
 
 # Agent Directives
@@ -95,7 +97,6 @@ class GroqClient:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     def _compact_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        # Ensure assistant messages with tool calls have content: "" (Google Shim requirement)
         for msg in messages:
             if msg.get("role") == "assistant" and msg.get("tool_calls") and msg.get("content") is None:
                 msg["content"] = ""
@@ -107,6 +108,15 @@ class GroqClient:
         if not any(m.get("role") == "system" for m in messages):
             messages.insert(0, {"role": "system", "content": self.get_system_prompt(role)})
         
+        # --- SLOW MODE: RPM MANAGEMENT ---
+        if self.slow_mode:
+            # Aim for 12 RPM (5s interval) to be safe
+            elapsed = time.time() - self._last_request_time
+            if elapsed < 5.0:
+                wait_time = 5.0 - elapsed
+                console.print(f"[dim]🕒 Slow Mode: Waiting {wait_time:.1f}s for API safety...[/dim]")
+                time.sleep(wait_time)
+
         compacted = self._compact_messages(messages)
         headers = self._get_headers()
         payload = {"model": self.model, "messages": compacted, "tools": TOOLS_METADATA, "tool_choice": "auto"}
@@ -120,22 +130,27 @@ class GroqClient:
         for attempt in range(max_retries):
             with httpx.Client() as client:
                 try:
+                    self._last_request_time = time.time()
                     response = client.post(url, headers=headers, json=payload, timeout=120.0)
                     if response.status_code == 400:
                         raise httpx.HTTPStatusError(f"400 Bad Request: {response.text}", request=response.request, response=response)
                     response.raise_for_status()
-                    return response.json()
+                    
+                    res_json = response.json()
+                    # Track tokens
+                    if "usage" in res_json:
+                        self._tokens_used = res_json["usage"].get("total_tokens", 0)
+                    
+                    return res_json
                 except httpx.HTTPStatusError as e:
-                    # Handle 429 (Rate Limit) and 503 (Overloaded)
                     if e.response.status_code in [429, 503]:
                         if attempt < max_retries - 1:
-                            wait_time = 5 * (attempt + 1)
-                            console.print(f"[dim]⚠️  API {e.response.status_code}. Retrying in {wait_time}s...[/dim]")
+                            wait_time = 10 * (attempt + 1)
+                            console.print(f"[dim]⚠️  API Overload. Waiting {wait_time}s...[/dim]")
                             time.sleep(wait_time)
                             continue
                         else:
-                            # FINAL FALLBACK TO STABLE MODEL
-                            fallback_model = "gemini-2.5-flash"
+                            fallback_model = "gemini-2.5-flash-lite"
                             if self.model != fallback_model and self.provider == "Google Gemini":
                                 console.print(f"\n[orange3]⚠️  Failing over to stable workhorse: {fallback_model}...[/orange3]")
                                 self.model = fallback_model
@@ -154,7 +169,6 @@ class GroqClient:
                 with Status(f"[bold blue]Clawt thinking... ({iteration}/{MAX_ITERATIONS})", console=console) as status:
                     response = self.chat(messages, role)
                     message = response["choices"][0]["message"]
-                    # Clean message for Google compatibility
                     if message.get("tool_calls") and message.get("content") is None:
                         message["content"] = ""
                     messages.append(message)
@@ -206,11 +220,10 @@ class GroqClient:
 
                     if len(result) > 8000: result = result[:8000] + "\n... [Truncated] ..."
                     
-                    # MANDATORY: Correct role:tool format for Google
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call["id"],
-                        "name": name,
+                        "name": name, 
                         "content": result
                     })
                     console.print(f"[bold green]✓ Done[/bold green]")
