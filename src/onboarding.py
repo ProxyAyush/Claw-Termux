@@ -1,4 +1,5 @@
 import os
+import questionary
 from pathlib import Path
 
 # Absolute path to the repository root
@@ -9,37 +10,45 @@ def check_setup() -> bool:
     return (REPO_ROOT / ".groq_api_key").exists() and (REPO_ROOT / ".groq_api_url").exists()
 
 def run_onboarding() -> bool:
-    print("Welcome to Clawt (Claw-Termux) Setup!")
-    print("-----------------------------------")
+    from rich.console import Console
+    from rich.panel import Panel
+    console = Console()
+    
+    console.print(Panel.fit(
+        "[bold cyan]🤖 CLAW-TERMUX SETUP[/bold cyan]\n[dim]Configure your elite engineering environment[/dim]",
+        border_style="cyan"
+    ))
     
     providers = {
-        "1": ("Groq", "https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
-        "2": ("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-3.1-405b-instruct"),
-        "3": ("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.5-flash"),
-        "4": ("DeepSeek", "https://api.deepseek.com/chat/completions", "deepseek-chat"),
-        "5": ("OpenAI", "https://api.openai.com/v1/chat/completions", "gpt-4o"),
-        "6": ("Custom", "", "")
+        "Groq": ("https://api.groq.com/openai/v1/chat/completions", "meta-llama/llama-4-scout-17b-16e-instruct"),
+        "Google Gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.5-flash"),
+        "OpenRouter": ("https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-3.1-405b-instruct"),
+        "DeepSeek": ("https://api.deepseek.com/chat/completions", "deepseek-chat"),
+        "OpenAI": ("https://api.openai.com/v1/chat/completions", "gpt-4o"),
+        "Custom": ("", "")
     }
     
-    print("\nSelect your LLM Provider:")
-    for key, (name, _, _) in providers.items():
-        print(f"{key}. {name}")
-        
-    choice = input("\nChoice [1-6]: ")
-    if choice not in providers:
-        print("Invalid choice. Defaulting to Groq.")
-        choice = "1"
-        
-    provider_name, default_url, default_model = providers[choice]
+    provider_name = questionary.select(
+        "Select your LLM Provider:",
+        choices=list(providers.keys())
+    ).ask()
     
-    if choice == "6":
-        api_url = input("Enter your custom API URL: ")
-        api_key = input("Enter your API Key: ")
-        model = input("Enter model name: ")
+    if not provider_name: return False
+    
+    default_url, default_model = providers[provider_name]
+    
+    if provider_name == "Custom":
+        api_url = questionary.text("Enter your custom API URL:").ask()
+        api_key = questionary.password("Enter your API Key:").ask()
+        model = questionary.text("Enter model name:").ask()
     else:
         api_url = default_url
-        api_key = input(f"Enter your {provider_name} API Key: ")
+        api_key = questionary.password(f"Enter your {provider_name} API Key:").ask()
         model = default_model
+        
+    if not api_key:
+        console.print("[bold red]Error: API Key is required.[/bold red]")
+        return False
         
     try:
         # Save configs to REPO_ROOT using absolute paths
@@ -48,10 +57,10 @@ def run_onboarding() -> bool:
         (REPO_ROOT / ".groq_model").write_text(model)
         (REPO_ROOT / ".groq_provider").write_text(provider_name)
         
-        print(f"\n✅ Setup complete! Clawt is configured to use {provider_name}.")
+        console.print(f"\n[bold green]✅ Setup complete! Clawt is configured to use {provider_name}.[/bold green]")
         return True
     except Exception as e:
-        print(f"\n❌ Setup failed: {str(e)}")
+        console.print(f"\n[bold red]❌ Setup failed: {str(e)}[/bold red]")
         return False
 
 if __name__ == "__main__":

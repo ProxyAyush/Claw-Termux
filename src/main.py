@@ -99,81 +99,70 @@ def main(argv: list[str] | None = None) -> int:
                     cmd_parts = raw_input.split()
                     slash_cmd = cmd_parts[0].lower()
                     
+                    # --- INTERACTIVE COMMAND MENU ---
                     if slash_cmd == '/' or slash_cmd == '/help':
-                        table = Table(title="Available Commands", border_style="cyan")
-                        table.add_column("Command", style="cyan", no_wrap=True)
-                        table.add_column("Action", style="dim")
-                        table.add_row("/help", "Show this help menu")
-                        table.add_row("/setup", "Change API keys or Provider")
-                        table.add_row("/yolo", "Toggle auto-approve (YOLO) mode")
-                        table.add_row("/model", "Interactive model picker (Arrow Keys)")
-                        table.add_row("/update", "Pull latest code and restart")
-                        table.add_row("/new", "Start a fresh session")
-                        table.add_row("/load", "Load a saved session (Arrow Keys)")
-                        console.print(table)
-                        continue
-                    
-                    if slash_cmd == '/setup':
-                        if run_onboarding():
-                            console.print("[green]🔄 Reloading configuration...[/green]")
-                            client = GroqClient()
-                        continue
-
-                    if slash_cmd == '/yolo':
-                        client.yolo_mode = not client.yolo_mode
-                        console.print(f"🛡️  YOLO Mode: [bold]{'ON (Auto-Approve)' if client.yolo_mode else 'OFF (Protected)'}[/bold]")
-                        continue
-
-                    if slash_cmd == '/model':
-                        new_model = questionary.select(
-                            "Select a Model:",
-                            choices=MODEL_OPTIONS,
-                            default=client.model if client.model in MODEL_OPTIONS else MODEL_OPTIONS[0]
+                        action = questionary.select(
+                            "Select a Command:",
+                            choices=[
+                                {"name": "Setup (Provider/Keys)", "value": "setup"},
+                                {"name": "Model Picker", "value": "model"},
+                                {"name": "Toggle YOLO Mode", "value": "yolo"},
+                                {"name": "Update from GitHub", "value": "update"},
+                                {"name": "Load Session", "value": "load"},
+                                {"name": "New Session", "value": "new"},
+                                {"name": "Cancel", "value": "cancel"}
+                            ]
                         ).ask()
                         
-                        if new_model:
-                            (REPO_ROOT / ".groq_model").write_text(new_model)
-                            client.model = new_model
-                            console.print(f"[bold green]✅ Model set to:[/bold green] {new_model}")
-                        continue
-
-                    if slash_cmd == '/update':
-                        console.print("\n🚀 [bold cyan]Self-updating Clawt...[/bold cyan]")
-                        import subprocess
-                        try:
-                            subprocess.run(['git', '-C', str(REPO_ROOT), 'reset', '--hard', 'origin/main'], check=False)
-                            subprocess.run(['git', '-C', str(REPO_ROOT), 'pull', 'origin', 'main'], check=True)
-                            console.print("[bold green]✅ Update successful! Restarting...[/bold green]")
-                            os.execv(sys.executable, [sys.executable, '-m', 'src.main', 'chat', '--session', session_id])
-                        except Exception as e: console.print(f"[bold red]❌ Update failed: {str(e)}[/bold red]")
-                        continue
-
-                    if slash_cmd == '/new':
-                        messages = []
-                        from uuid import uuid4
-                        session_id = uuid4().hex
-                        console.print(f"[bold blue]✨ Started fresh session: {session_id}[/bold blue]")
-                        continue
+                        if not action or action == "cancel": continue
                         
-                    if slash_cmd == '/load':
-                        if DEFAULT_SESSION_DIR.exists():
-                            sessions = [s.stem for s in DEFAULT_SESSION_DIR.glob("*.json")]
-                            if not sessions:
-                                console.print("[yellow]No saved sessions found.[/yellow]")
-                                continue
-                                
-                            sid = questionary.select("Select a Session:", choices=sessions).ask()
-                            if sid:
-                                try:
-                                    stored = load_session(sid)
-                                    messages = []
-                                    for i, msg in enumerate(stored.messages):
-                                        role = "user" if i % 2 == 0 else "assistant"
-                                        messages.append({"role": role, "content": msg})
-                                    session_id = sid
-                                    console.print(f"[bold green]✅ Resumed:[/bold green] {sid}")
-                                except Exception as e: console.print(f"[bold red]❌ Load failed: {str(e)}[/bold red]")
-                        else: console.print("[yellow]No session directory found.[/yellow]")
+                        if action == "setup":
+                            if run_onboarding():
+                                console.print("[green]🔄 Reloading configuration...[/green]")
+                                client = GroqClient()
+                        elif action == "model":
+                            new_model = questionary.select("Select a Model:", choices=MODEL_OPTIONS, default=client.model).ask()
+                            if new_model:
+                                (REPO_ROOT / ".groq_model").write_text(new_model)
+                                client.model = new_model
+                                console.print(f"[bold green]✅ Model set to:[/bold green] {new_model}")
+                        elif action == "yolo":
+                            client.yolo_mode = not client.yolo_mode
+                            console.print(f"🛡️  YOLO Mode: [bold]{'ON (Auto-Approve)' if client.yolo_mode else 'OFF (Protected)'}[/bold]")
+                        elif action == "update":
+                            console.print("\n🚀 [bold cyan]Self-updating Clawt...[/bold cyan]")
+                            import subprocess
+                            try:
+                                subprocess.run(['git', '-C', str(REPO_ROOT), 'reset', '--hard', 'origin/main'], check=False)
+                                subprocess.run(['git', '-C', str(REPO_ROOT), 'pull', 'origin', 'main'], check=True)
+                                console.print("[bold green]✅ Update successful! Restarting...[/bold green]")
+                                os.execv(sys.executable, [sys.executable, '-m', 'src.main', 'chat', '--session', session_id])
+                            except Exception as e: console.print(f"[bold red]❌ Update failed: {str(e)}[/bold red]")
+                        elif action == "load":
+                            if DEFAULT_SESSION_DIR.exists():
+                                sessions = [s.stem for s in DEFAULT_SESSION_DIR.glob("*.json")]
+                                if sessions:
+                                    sid = questionary.select("Select a Session:", choices=sessions).ask()
+                                    if sid:
+                                        stored = load_session(sid)
+                                        messages = []
+                                        for i, msg in enumerate(stored.messages):
+                                            role = "user" if i % 2 == 0 else "assistant"
+                                            messages.append({"role": role, "content": msg})
+                                        session_id = sid
+                                        console.print(f"[bold green]✅ Resumed:[/bold green] {sid}")
+                                else: console.print("[yellow]No saved sessions found.[/yellow]")
+                        elif action == "new":
+                            messages = []
+                            from uuid import uuid4
+                            session_id = uuid4().hex
+                            console.print(f"[bold blue]✨ Started fresh session: {session_id}[/bold blue]")
+                        continue
+
+                    # (Direct commands like /yolo or /model <id> still work for power users)
+                    if slash_cmd == '/yolo':
+                        client.yolo_mode = not client.yolo_mode
+                        console.print(f"🛡️  YOLO Mode: [bold]{'ON' if client.yolo_mode else 'OFF'}[/bold]")
                         continue
 
                 # Handle File Context (#)
