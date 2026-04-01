@@ -4,14 +4,19 @@ import json
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from rich.console import Console
+from rich.panel import Panel
+from rich.live import Live
+from rich.status import Status
+from rich.markdown import Markdown
 from .real_tools import TOOLS_METADATA, handle_tool_call
 
 # Absolute path to the repository root
 REPO_ROOT = Path("/data/data/com.termux/files/home/Claw-Termux")
+console = Console()
 
 class GroqClient:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        # Load from environment or absolute file paths
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         key_file = REPO_ROOT / ".groq_api_key"
         if not self.api_key and key_file.exists():
@@ -31,7 +36,6 @@ class GroqClient:
         if not self.base_url:
             self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         
-        # Load Memory from absolute paths
         self.memory_context = self._load_memory()
 
         # The "EMPLOYEE-GRADE" Master System Prompt
@@ -48,8 +52,8 @@ class GroqClient:
 # Using Your Tools
 - Use dedicated tools (read_file, edit_file, glob_files, grep_files) instead of bash for file operations.
 - Parallelize independent tool calls.
-- Use `spawn_agent` for complex sub-tasks.
-- Use `mcp_tool` for external knowledge.
+- Use `spawn_agent` for complex sub-tasks ($team mode).
+- Use `mcp_tool` for external knowledge (GitHub/Search).
 
 # Tone and Style
 - Be extra concise. Lead with the action.
@@ -139,12 +143,15 @@ class GroqClient:
         while iteration < MAX_ITERATIONS:
             iteration += 1
             try:
-                response = self.chat(messages, role)
-                message = response["choices"][0]["message"]
-                messages.append(message)
+                # Elite "Thinking" status
+                with Status(f"[bold blue]Clawt thinking... ({iteration}/{MAX_ITERATIONS})", console=console) as status:
+                    response = self.chat(messages, role)
+                    message = response["choices"][0]["message"]
+                    messages.append(message)
 
-                if message.get("content") and stream_callback:
-                    stream_callback(message["content"])
+                if message.get("content"):
+                    if stream_callback: stream_callback(message["content"])
+                    else: console.print(Markdown(message["content"]))
 
                 if not message.get("tool_calls"):
                     return message.get("content", "")
@@ -154,27 +161,24 @@ class GroqClient:
                     try: args = json.loads(tool_call["function"]["arguments"])
                     except: args = {}
                     
-                    # --- TRANSPARENCY ENHANCEMENT ---
+                    # Elite Tool Rendering
                     if name == "execute_bash":
-                        cmd_display = args.get("command", "")
-                        if stream_callback:
-                            stream_callback(f"\n\n[🛠️  Clawt Running Shell Command]\n$ {cmd_display}\n")
+                        cmd = args.get("command", "")
+                        console.print(Panel(f"[bold cyan]$ {cmd}", title="🛠️ Clawt Shell", border_style="cyan"))
                     else:
-                        if stream_callback:
-                            stream_callback(f"\n[⚡ Clawt: {name}]\n")
-                    
+                        console.print(f"[bold magenta]⚡ Clawt: {name}[/bold magenta]")
+
                     # Execute Tool
                     result = handle_tool_call(name, args)
                     
-                    # Aggressive Truncation for Tool Results
+                    # Tool Result Rendering
                     if not isinstance(result, str): result = str(result)
                     
-                    # Show bash output to user if desired
-                    if name == "execute_bash" and stream_callback:
-                        # Show first 500 chars of output to keep UI clean
-                        preview = result[:500] + "..." if len(result) > 500 else result
-                        stream_callback(f"[Output]:\n{preview}\n")
+                    if name == "execute_bash":
+                        preview = result[:800] + "..." if len(result) > 800 else result
+                        console.print(Panel(preview, title="📝 Output", border_style="dim"))
 
+                    # Aggressive Truncation for Tool Results
                     if len(result) > 8000:
                         result = result[:8000] + "\n... [Output truncated to prevent Payload Too Large error] ..."
                     
@@ -185,8 +189,7 @@ class GroqClient:
                         "content": result
                     })
                     
-                    if stream_callback:
-                        stream_callback(f"[✓ Done]\n")
+                    console.print(f"[bold green]✓ Done[/bold green]")
                         
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 413:
@@ -200,7 +203,7 @@ class GroqClient:
         output_chunks = []
         def callback(text):
             if text:
-                print(text, end="", flush=True)
+                console.print(text, end="", flush=True)
                 output_chunks.append(text)
         self.chat_with_tools(messages, role, stream_callback=callback)
         yield "".join(output_chunks)

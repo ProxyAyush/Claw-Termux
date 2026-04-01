@@ -3,14 +3,18 @@ import argparse
 import os
 import re
 import sys
-from .groq_client import GroqClient
+from rich.console import Console
+from rich.panel import Panel
+from rich.prompt import Prompt
+from rich.table import Table
+from rich.markdown import Markdown
+from .groq_client import GroqClient, REPO_ROOT
 from .onboarding import run_onboarding, check_setup
 from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, StoredSession
 
-# Global YOLO mode (Auto-approve)
+console = Console()
 YOLO_MODE = False
 
-# Interactive Model List for 2026
 MODEL_OPTIONS = {
     "1": "gemini-3.1-pro",
     "2": "gemini-3.1-flash",
@@ -19,6 +23,13 @@ MODEL_OPTIONS = {
     "5": "openai/gpt-oss-120b",
     "6": "deepseek-chat"
 }
+
+def print_banner():
+    console.print(Panel.fit(
+        "[bold cyan]🤖 CLAW-TERMUX (CLAWT)[/bold cyan]\n[dim]The Elite Engineering Agent for Android[/dim]",
+        border_style="cyan",
+        padding=(1, 4)
+    ))
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='Clawt: The advanced Termux CLI agent')
@@ -42,23 +53,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if run_onboarding() else 1
         
     if not check_setup() and cmd in ['chat']:
-        print("No API configuration found. Running setup...")
+        print_banner()
+        console.print("[yellow]No API configuration found. Running setup...[/yellow]")
         if not run_onboarding(): return 1
 
     if cmd == 'update':
-        print("\n🚀 Updating Clawt from GitHub...")
+        print_banner()
+        console.print("\n🚀 [bold cyan]Updating Clawt from GitHub...[/bold cyan]")
         import subprocess
         try:
-            from .groq_client import REPO_ROOT
             subprocess.run(['git', '-C', str(REPO_ROOT), 'reset', '--hard', 'origin/main'], check=False)
             subprocess.run(['git', '-C', str(REPO_ROOT), 'pull', 'origin', 'main'], check=True)
-            print("✅ Update successful!")
-        except Exception as e: print(f"❌ Update failed: {str(e)}")
+            console.print("[bold green]✅ Update successful![/bold green]")
+        except Exception as e: console.print(f"[bold red]❌ Update failed: {str(e)}[/bold red]")
         return 0
 
     if cmd == 'chat':
-        yolo_from_args = getattr(args, 'yolo', False)
-        YOLO_MODE = yolo_from_args
+        print_banner()
+        YOLO_MODE = getattr(args, 'yolo', False)
         client = GroqClient()
         session_id = getattr(args, 'session', None)
         
@@ -69,111 +81,81 @@ def main(argv: list[str] | None = None) -> int:
                 for i, msg in enumerate(stored.messages):
                     role = "user" if i % 2 == 0 else "assistant"
                     messages.append({"role": role, "content": msg})
-                print(f"Resumed session: {session_id}")
-            except Exception:
-                messages = []
+                console.print(f"[dim]Resumed session: {session_id}[/dim]")
+            except Exception: messages = []
         else:
             messages = []
             from uuid import uuid4
             session_id = uuid4().hex
         
-        print(f"\n💬 Clawt Active [YOLO: {'ON' if YOLO_MODE else 'OFF'}]")
-        print("Type '/' for commands, or 'exit' to stop.")
+        console.print(f"[bold green]💬 Clawt Active[/bold green] [dim]| Model: {client.model} | YOLO: {'ON' if YOLO_MODE else 'OFF'}[/dim]")
+        console.print("[dim]Type '/' for commands, or 'exit' to stop.[/dim]\n")
         
         while True:
             try:
-                raw_input = input("\n👤 You: ").strip()
+                raw_input = console.input("[bold blue]👤 You:[/bold blue] ").strip()
                 if not raw_input: continue
                 if raw_input.lower() in ['exit', 'quit']: break
                 
-                # Intercept Slash Commands
                 if raw_input.startswith('/'):
                     cmd_parts = raw_input.split()
                     slash_cmd = cmd_parts[0].lower()
                     
                     if slash_cmd == '/' or slash_cmd == '/help':
-                        print("\nAvailable Commands:")
-                        print("  /help           - Show this help menu")
-                        print("  /setup          - Change API keys or Provider")
-                        print("  /yolo           - Toggle auto-approve mode")
-                        print("  /model          - Interactive model picker")
-                        print("  /models         - List latest 2026 models")
-                        print("  /sessions       - List saved sessions")
-                        print("  /load <id>      - Resume a session")
-                        print("  /new            - Start a fresh session")
-                        print("  /update         - Pull latest code and restart")
+                        table = Table(title="Available Commands", border_style="cyan")
+                        table.add_column("Command", style="cyan", no_wrap=True)
+                        table.add_column("Action", style="dim")
+                        table.add_row("/help", "Show this help menu")
+                        table.add_row("/setup", "Change API keys or Provider")
+                        table.add_row("/yolo", "Toggle auto-approve mode")
+                        table.add_row("/model", "Interactive model picker")
+                        table.add_row("/update", "Pull latest code and restart")
+                        table.add_row("/new", "Start a fresh session")
+                        console.print(table)
                         continue
                     
                     if slash_cmd == '/setup':
                         if run_onboarding():
-                            print("🔄 Reloading configuration...")
+                            console.print("[green]🔄 Reloading configuration...[/green]")
                             client = GroqClient()
                         continue
 
                     if slash_cmd == '/yolo':
                         YOLO_MODE = not YOLO_MODE
-                        print(f"✅ YOLO Mode: {'ON' if YOLO_MODE else 'OFF'}")
+                        console.print(f"✅ YOLO Mode: [bold]{'ON' if YOLO_MODE else 'OFF'}[/bold]")
                         continue
 
                     if slash_cmd == '/model':
-                        print("\nSelect a Model:")
+                        table = Table(title="Select a Model", border_style="magenta")
+                        table.add_column("ID", style="magenta")
+                        table.add_column("Model Name")
                         for k, v in MODEL_OPTIONS.items():
-                            print(f"  {k}. {v} {'(Active)' if v == client.model else ''}")
+                            table.add_row(k, f"{v} {'(Active)' if v == client.model else ''}")
+                        console.print(table)
                         
-                        choice = input("\nChoice [1-6]: ").strip()
-                        if choice in MODEL_OPTIONS:
-                            new_model = MODEL_OPTIONS[choice]
-                            from .groq_client import REPO_ROOT
-                            (REPO_ROOT / ".groq_model").write_text(new_model)
-                            client.model = new_model
-                            print(f"✅ Model set to: {new_model}")
-                        else:
-                            print("Invalid choice.")
-                        continue
-
-                    if slash_cmd == '/models':
-                        print("\nPopular 2026 Models:")
-                        for v in MODEL_OPTIONS.values(): print(f" - {v}")
+                        choice = Prompt.ask("Select Model", choices=list(MODEL_OPTIONS.keys()))
+                        new_model = MODEL_OPTIONS[choice]
+                        (REPO_ROOT / ".groq_model").write_text(new_model)
+                        client.model = new_model
+                        console.print(f"[bold green]✅ Model set to:[/bold green] {new_model}")
                         continue
 
                     if slash_cmd == '/update':
-                        print("\n🚀 Self-updating Clawt...")
+                        console.print("\n🚀 [bold cyan]Self-updating Clawt...[/bold cyan]")
                         import subprocess
                         try:
-                            from .groq_client import REPO_ROOT
                             subprocess.run(['git', '-C', str(REPO_ROOT), 'reset', '--hard', 'origin/main'], check=False)
                             subprocess.run(['git', '-C', str(REPO_ROOT), 'pull', 'origin', 'main'], check=True)
-                            print("✅ Update successful! Restarting...")
+                            console.print("[bold green]✅ Update successful! Restarting...[/bold green]")
                             os.execv(sys.executable, [sys.executable, '-m', 'src.main', 'chat', '--session', session_id])
-                        except Exception as e: print(f"❌ Update failed: {str(e)}")
-                        continue
-
-                    if slash_cmd == '/sessions':
-                        if DEFAULT_SESSION_DIR.exists():
-                            print("\nSaved Sessions:")
-                            for s in DEFAULT_SESSION_DIR.glob("*.json"): print(f" - {s.stem}")
-                        else: print("No session directory found.")
-                        continue
-                        
-                    if slash_cmd == '/load' and len(cmd_parts) > 1:
-                        sid = cmd_parts[1]
-                        try:
-                            stored = load_session(sid)
-                            messages = []
-                            for i, msg in enumerate(stored.messages):
-                                role = "user" if i % 2 == 0 else "assistant"
-                                messages.append({"role": role, "content": msg})
-                            session_id = sid
-                            print(f"✅ Resumed: {sid}")
-                        except Exception as e:
-                            print(f"❌ Load failed: {str(e)}")
+                        except Exception as e: console.print(f"[bold red]❌ Update failed: {str(e)}[/bold red]")
                         continue
 
                     if slash_cmd == '/new':
                         messages = []
                         from uuid import uuid4
                         session_id = uuid4().hex
-                        print(f"✨ Started fresh session: {session_id}")
+                        console.print(f"[bold blue]✨ Started fresh session: {session_id}[/bold blue]")
                         continue
 
                 # Handle File Context (#)
@@ -184,13 +166,13 @@ def main(argv: list[str] | None = None) -> int:
                         try:
                             with open(file_ref, 'r') as f: content = f.read()
                             processed_prompt = processed_prompt.replace(f'#{file_ref}', f'\n--- FILE: {file_ref} ---\n{content}\n--- END FILE ---')
-                            print(f"📎 Attached: {file_ref}")
-                        except Exception as e: print(f"⚠️ Error reading {file_ref}: {str(e)}")
+                            console.print(f"[dim]📎 Attached: {file_ref}[/dim]")
+                        except Exception as e: console.print(f"[red]⚠️ Error reading {file_ref}: {str(e)}[/red]")
 
                 messages.append({"role": "user", "content": processed_prompt})
-                print("\n🤖 Clawt: ", end="", flush=True)
+                console.print("\n[bold cyan]🤖 Clawt:[/bold cyan]")
                 for chunk in client.stream_chat(messages): pass 
-                print("\n")
+                console.print("\n" + "─" * console.width + "\n", style="dim")
                 
                 try:
                     save_session(StoredSession(
@@ -201,11 +183,10 @@ def main(argv: list[str] | None = None) -> int:
                 except Exception: pass
                 
             except KeyboardInterrupt: 
-                print("\nGoodbye!")
+                console.print("\n[bold red]Goodbye![/bold red]")
                 break
-            except Exception as e: print(f"\n❌ Error: {str(e)}")
+            except Exception as e: console.print(f"\n[bold red]❌ Error: {str(e)}[/bold red]")
         return 0
-    
     return 0
 
 if __name__ == '__main__':
