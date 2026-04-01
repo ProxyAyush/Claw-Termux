@@ -29,19 +29,29 @@ class GroqClient:
         if not self.model and model_file.exists():
             self.model = model_file.read_text().strip()
         if not self.model:
-            self.model = "models/gemini-2.5-flash"
+            self.model = "gemini-2.0-flash"
 
         self.base_url = os.environ.get("GROQ_API_URL")
         url_file = REPO_ROOT / ".groq_api_url"
         if not self.base_url and url_file.exists():
             self.base_url = url_file.read_text().strip()
+        
+        # --- DEFINITIVE GEMINI OPENAI-SHIM FIX ---
+        if self.base_url and "generativelanguage.googleapis.com" in self.base_url:
+            # The OpenAI-compatible base URL should end with /openai/
+            if not self.base_url.endswith("/openai/"):
+                if "/openai/chat/completions" in self.base_url:
+                    self.base_url = self.base_url.split("/chat/completions")[0]
+                elif not self.base_url.endswith("/"):
+                    self.base_url += "/"
+            
+            # OpenAI shim does NOT want the "models/" prefix
+            if self.model.startswith("models/"):
+                self.model = self.model.replace("models/", "")
+        
         if not self.base_url:
             self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         
-        # --- MODEL ID FIXER (FOR GEMINI 404s) ---
-        if "generativelanguage.googleapis.com" in self.base_url and not self.model.startswith("models/"):
-            self.model = f"models/{self.model}"
-            
         self.yolo_mode = False 
         self.memory_context = self._load_memory()
 
@@ -79,6 +89,7 @@ class GroqClient:
         return self.master_system_prompt.format(memory_instruction=memory_instr)
 
     def _get_headers(self) -> Dict[str, str]:
+        # Gemini OpenAI shim uses standard Bearer token
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     def _compact_messages(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -89,21 +100,29 @@ class GroqClient:
         if not self.api_key: raise ValueError("API Key not set. Run setup.")
         if not any(m.get("role") == "system" for m in messages):
             messages.insert(0, {"role": "system", "content": self.get_system_prompt(role)})
+        
         messages = self._compact_messages(messages)
         headers = self._get_headers()
         payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
+        # Determine the full URL
+        full_url = self.base_url
+        if not full_url.endswith("chat/completions"):
+            if not full_url.endswith("/"): full_url += "/"
+            full_url += "chat/completions"
+
         for attempt in range(3):
             with httpx.Client() as client:
                 try:
-                    response = client.post(self.base_url, headers=headers, json=payload, timeout=120.0)
+                    response = client.post(full_url, headers=headers, json=payload, timeout=120.0)
                     if response.status_code == 400:
-                        raise httpx.HTTPStatusError(f"400: {response.text}", request=response.request, response=response)
+                        error_body = response.text
+                        raise httpx.HTTPStatusError(f"400: {error_body}", request=response.request, response=response)
                     response.raise_for_status()
                     return response.json()
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code == 429 and attempt < 2:
-                        time.sleep(2 * (attempt + 1))
+                        time.sleep(3 * (attempt + 1))
                         continue
                     raise e
 
