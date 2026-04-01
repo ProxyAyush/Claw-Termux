@@ -36,18 +36,23 @@ class GroqClient:
         if not self.base_url and url_file.exists():
             self.base_url = url_file.read_text().strip()
         
-        # --- DEFINITIVE GEMINI OPENAI-SHIM FIX ---
-        if self.base_url and "generativelanguage.googleapis.com" in self.base_url:
-            if "openai" not in self.base_url:
-                if not self.base_url.endswith("/"): self.base_url += "/"
-                self.base_url += "openai/"
-            elif not self.base_url.endswith("/"):
-                self.base_url += "/"
-            if self.model.startswith("models/"):
-                self.model = self.model.replace("models/", "")
-        
         if not self.base_url:
             self.base_url = "https://api.groq.com/openai/v1/chat/completions"
+
+        self.provider = self._detect_provider()
+        
+        # --- DEFINITIVE URL & MODEL CLEANUP ---
+        if self.provider == "Google Gemini":
+            # Strip the chat/completions if it exists to normalize the base
+            if "/chat/completions" in self.base_url:
+                self.base_url = self.base_url.split("/chat/completions")[0]
+            if not self.base_url.endswith("/"): self.base_url += "/"
+            # Ensure OpenAI shim format
+            if "openai" not in self.base_url: self.base_url += "openai/"
+            
+            # Gemini OpenAI shim hates "models/" prefix
+            if self.model.startswith("models/"):
+                self.model = self.model.replace("models/", "")
         
         self.yolo_mode = False 
         self.memory_context = self._load_memory()
@@ -68,6 +73,14 @@ class GroqClient:
 
 {memory_instruction}
 """
+
+    def _detect_provider(self) -> str:
+        prov_file = REPO_ROOT / ".groq_provider"
+        if prov_file.exists():
+            return prov_file.read_text().strip()
+        if "googleapis.com" in self.base_url: return "Google Gemini"
+        if "groq.com" in self.base_url: return "Groq"
+        return "Custom"
 
     def _load_memory(self) -> str:
         memory_content = []
@@ -101,13 +114,12 @@ class GroqClient:
         headers = self._get_headers()
         payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
-        # Determine Endpoint URL
+        # FINAL ENDPOINT CONSRUCTION
         url = self.base_url
+        if not url.endswith("/"): url += "/"
         if not url.endswith("chat/completions"):
-            if not url.endswith("/"): url += "/"
             url += "chat/completions"
 
-        # --- RESILIENCE ENGINE: RATE LIMIT FALLBACK ---
         max_retries = 3
         for attempt in range(max_retries):
             with httpx.Client() as client:
@@ -118,21 +130,16 @@ class GroqClient:
                     response.raise_for_status()
                     return response.json()
                 except httpx.HTTPStatusError as e:
-                    # If we hit 429 (Too Many Requests)
                     if e.response.status_code == 429:
                         if attempt < max_retries - 1:
-                            # Wait and retry first
                             time.sleep(2 * (attempt + 1))
                             continue
                         else:
-                            # ON FINAL ATTEMPT FAIL: KICK IN FALLBACK
                             fallback_model = "gemini-3.1-flash-preview"
-                            if self.model != fallback_model:
-                                console.print(f"\n[bold orange3]⚠️  Rate limit reached for {self.model}.[/bold orange3]")
-                                console.print(f"[bold green]🚀 Resilience Engine: Falling back to {fallback_model}...[/bold green]")
+                            if self.model != fallback_model and self.provider == "Google Gemini":
+                                console.print(f"\n[orange3]⚠️  Rate limit. Falling back to {fallback_model}...[/orange3]")
                                 self.model = fallback_model
                                 payload["model"] = fallback_model
-                                # One last try with fallback
                                 response = client.post(url, headers=headers, json=payload, timeout=120.0)
                                 response.raise_for_status()
                                 return response.json()
@@ -163,12 +170,9 @@ class GroqClient:
                     
                     is_sensitive = name in ["execute_bash", "edit_file", "web_search", "web_fetch", "spawn_agent"]
                     if is_sensitive:
-                        if name == "execute_bash":
-                            display = f"[bold cyan]$ {args.get('command')}"
-                        elif name == "web_search":
-                            display = f"[bold yellow]Searching: {args.get('query')}"
-                        else:
-                            display = f"[bold magenta]⚡ {name}({args})"
+                        if name == "execute_bash": display = f"[bold cyan]$ {args.get('command')}"
+                        elif name == "web_search": display = f"[bold yellow]Searching: {args.get('query')}"
+                        else: display = f"[bold magenta]⚡ {name}({args})"
 
                         console.print(Panel(display, title=f"🛡️  Clawt Request: {name}", border_style="yellow"))
                         
@@ -185,27 +189,19 @@ class GroqClient:
                                 default="y"
                             ).ask()
 
-                            if choice == "n":
-                                result = "Error: User denied permission for this action."
+                            if choice == "n": result = "Error: User denied permission."
                             elif choice == "e":
-                                if name == "execute_bash":
-                                    args["command"] = questionary.text("Edit command:", default=args.get("command", "")).ask()
-                                elif name == "web_search":
-                                    args["query"] = questionary.text("Edit search query:", default=args.get("query", "")).ask()
+                                if name == "execute_bash": args["command"] = questionary.text("Edit command:", default=args.get("command", "")).ask()
+                                elif name == "web_search": args["query"] = questionary.text("Edit search query:", default=args.get("query", "")).ask()
                                 result = handle_tool_call(name, args)
                             elif choice == "a":
                                 self.yolo_mode = True
                                 result = handle_tool_call(name, args)
-                            elif choice == "q":
-                                console.print("[bold red]Quitting session.[/bold red]")
-                                return "User terminated session."
-                            else:
-                                result = handle_tool_call(name, args)
-                        else:
-                            result = handle_tool_call(name, args)
+                            elif choice == "q": return "User terminated session."
+                            else: result = handle_tool_call(name, args)
+                        else: result = handle_tool_call(name, args)
                     else:
-                        if not self.yolo_mode:
-                            console.print(f"[dim]⚡ Clawt: {name}[/dim]")
+                        if not self.yolo_mode: console.print(f"[dim]⚡ Clawt: {name}[/dim]")
                         result = handle_tool_call(name, args)
 
                     if not isinstance(result, str): result = str(result)
@@ -213,16 +209,9 @@ class GroqClient:
                         preview = result[:800] + "..." if len(result) > 800 else result
                         console.print(Panel(preview, title="📝 Output", border_style="dim"))
 
-                    if len(result) > 8000:
-                        result = result[:8000] + "\n... [Output truncated] ..."
-                    
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call["id"],
-                        "name": name,
-                        "content": result
-                    })
-                    console.print(f"[bold green]✓ Action Complete[/bold green]")
+                    if len(result) > 8000: result = result[:8000] + "\n... [Truncated] ..."
+                    messages.append({"role": "tool", "tool_call_id": tool_call["id"], "name": name, "content": result})
+                    console.print(f"[bold green]✓ Done[/bold green]")
                         
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 413:

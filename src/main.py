@@ -15,14 +15,19 @@ from .session_store import load_session, DEFAULT_SESSION_DIR, save_session, Stor
 
 console = Console()
 
-# Definitive 2026 Model List
-MODEL_OPTIONS = [
+# --- PROVIDER-SPECIFIC MODEL LISTS (2026) ---
+GEMINI_MODELS = [
     "gemini-3.1-pro-preview",
     "gemini-3.1-flash-preview",
     "gemini-3-deep-think-preview",
+    "gemini-2.5-flash"
+]
+
+GROQ_MODELS = [
     "meta-llama/llama-4-scout-17b-16e-instruct",
     "openai/gpt-oss-120b",
-    "deepseek-chat"
+    "qwen/qwen3-32b",
+    "llama-3.3-70b-versatile"
 ]
 
 def print_banner():
@@ -92,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
             from uuid import uuid4
             session_id = uuid4().hex
         
-        console.print(f"[bold green]💬 Clawt Active[/bold green] [dim]| Model: {client.model} | YOLO: {'ON' if client.yolo_mode else 'OFF'}[/dim]")
+        console.print(f"[bold green]💬 Clawt Active[/bold green] [dim]| Provider: {client.provider} | Model: {client.model}[/dim]")
         console.print("[dim]Type '/' for commands, or 'exit' to stop.[/dim]\n")
         
         while True:
@@ -125,9 +130,13 @@ def main(argv: list[str] | None = None) -> int:
                                 console.print("[green]🔄 Reloading configuration...[/green]")
                                 client = GroqClient()
                         elif action == "model":
-                            current_val = client.model
-                            if current_val not in MODEL_OPTIONS: current_val = MODEL_OPTIONS[0]
-                            new_model = questionary.select("Select a Model:", choices=MODEL_OPTIONS, default=current_val).ask()
+                            # Filter list based on provider
+                            options = GEMINI_MODELS if client.provider == "Google Gemini" else GROQ_MODELS
+                            new_model = questionary.select(
+                                f"Select a {client.provider} Model:", 
+                                choices=options, 
+                                default=client.model if client.model in options else options[0]
+                            ).ask()
                             if new_model:
                                 (REPO_ROOT / ".groq_model").write_text(new_model)
                                 client.model = new_model
