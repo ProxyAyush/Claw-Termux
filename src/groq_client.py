@@ -29,7 +29,7 @@ class GroqClient:
         if not self.model and model_file.exists():
             self.model = model_file.read_text().strip()
         if not self.model:
-            self.model = "gemini-3-flash-preview"
+            self.model = "gemini-2.5-flash" # Use stable as default if none set
 
         self.base_url = os.environ.get("GROQ_API_URL")
         url_file = REPO_ROOT / ".groq_api_url"
@@ -41,34 +41,30 @@ class GroqClient:
 
         self.provider = self._detect_provider()
         
-        # --- DEFINITIVE URL & MODEL NORMALIZATION ---
+        # --- DEFINITIVE NORMALIZATION ---
         if self.provider == "Google Gemini":
             if "/chat/completions" in self.base_url:
                 self.base_url = self.base_url.split("/chat/completions")[0]
             if not self.base_url.endswith("/"): self.base_url += "/"
             if "openai" not in self.base_url: self.base_url += "openai/"
-            
-            # OpenAI shim hates "models/" prefix
             if self.model.startswith("models/"):
                 self.model = self.model.replace("models/", "")
         
         self.yolo_mode = False 
         self.memory_context = self._load_memory()
 
-        # The "EMPLOYEE-GRADE" Master System Prompt
+        # Master System Prompt
         self.master_system_prompt = """You are Clawt, an interactive agent specializing in high-end software engineering. 
 
-# Agent Directives: Mechanical Overrides
+# Agent Directives
 1. THE "STEP 0" RULE: Before ANY structural refactor on a file >300 LOC, first remove all dead code.
 2. PHASED EXECUTION: Max 5 files per phase. Verify after each phase.
-3. FILE READ BUDGET: Use read_file with start_line/end_line for files >500 LOC.
-4. FORCED VERIFICATION: Forbidden from reporting complete until tests/type-checks pass.
+3. FORCED VERIFICATION: Forbidden from reporting complete until tests/type-checks pass.
 
 # Using Your Tools
 - Use `list_dir` to explore directories. Folders end with /.
-- Use dedicated tools instead of bash for file operations.
+- Use `google_search` for technical indexing.
 - Use `execute_bash` for Termux operations and Android file access (e.g. ls /sdcard).
-- Use `google_search` for elite technical indexing.
 
 {memory_instruction}
 """
@@ -92,28 +88,29 @@ class GroqClient:
         return "\n".join(memory_content) if memory_content else ""
 
     def get_system_prompt(self, role: str = "coordinator") -> str:
-        memory_instr = ""
-        if self.memory_context:
-            memory_instr = f"\n# Memory & User Instructions\n{self.memory_context}"
+        memory_instr = f"\n# Memory\n{self.memory_context}" if self.memory_context else ""
         return self.master_system_prompt.format(memory_instruction=memory_instr)
 
     def _get_headers(self) -> Dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
-    def _compact_messages(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    def _compact_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        # Ensure assistant messages with tool calls have content: "" (Google Shim requirement)
+        for msg in messages:
+            if msg.get("role") == "assistant" and msg.get("tool_calls") and msg.get("content") is None:
+                msg["content"] = ""
         if len(messages) <= 12: return messages
         return [messages[0], messages[1]] + messages[-10:]
 
-    def chat(self, messages: List[Dict[str, str]], role: str = "coordinator") -> Dict[Any, Any]:
+    def chat(self, messages: List[Dict[str, Any]], role: str = "coordinator") -> Dict[Any, Any]:
         if not self.api_key: raise ValueError("API Key not set. Run setup.")
         if not any(m.get("role") == "system" for m in messages):
             messages.insert(0, {"role": "system", "content": self.get_system_prompt(role)})
         
-        messages = self._compact_messages(messages)
+        compacted = self._compact_messages(messages)
         headers = self._get_headers()
-        payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
+        payload = {"model": self.model, "messages": compacted, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
-        # --- ROBUST URL CONSTRUCTION ---
         url = self.base_url
         if "chat/completions" not in url:
             if not url.endswith("/"): url += "/"
@@ -129,15 +126,18 @@ class GroqClient:
                     response.raise_for_status()
                     return response.json()
                 except httpx.HTTPStatusError as e:
-                    if e.response.status_code == 429:
+                    # Handle 429 (Rate Limit) and 503 (Overloaded)
+                    if e.response.status_code in [429, 503]:
                         if attempt < max_retries - 1:
-                            time.sleep(2 * (attempt + 1))
+                            wait_time = 5 * (attempt + 1)
+                            console.print(f"[dim]⚠️  API {e.response.status_code}. Retrying in {wait_time}s...[/dim]")
+                            time.sleep(wait_time)
                             continue
                         else:
-                            # CORRECT FALLBACK MODEL ID FOR 2026
-                            fallback_model = "gemini-3-flash-preview"
+                            # FINAL FALLBACK TO STABLE MODEL
+                            fallback_model = "gemini-2.5-flash"
                             if self.model != fallback_model and self.provider == "Google Gemini":
-                                console.print(f"\n[orange3]⚠️  Rate limit. Falling back to {fallback_model}...[/orange3]")
+                                console.print(f"\n[orange3]⚠️  Failing over to stable workhorse: {fallback_model}...[/orange3]")
                                 self.model = fallback_model
                                 payload["model"] = fallback_model
                                 response = client.post(url, headers=headers, json=payload, timeout=120.0)
@@ -145,7 +145,7 @@ class GroqClient:
                                 return response.json()
                     raise e
 
-    def chat_with_tools(self, messages: List[Dict[str, str]], role: str = "coordinator", stream_callback=None):
+    def chat_with_tools(self, messages: List[Dict[str, Any]], role: str = "coordinator", stream_callback=None):
         MAX_ITERATIONS = 15
         iteration = 0
         while iteration < MAX_ITERATIONS:
@@ -154,6 +154,9 @@ class GroqClient:
                 with Status(f"[bold blue]Clawt thinking... ({iteration}/{MAX_ITERATIONS})", console=console) as status:
                     response = self.chat(messages, role)
                     message = response["choices"][0]["message"]
+                    # Clean message for Google compatibility
+                    if message.get("tool_calls") and message.get("content") is None:
+                        message["content"] = ""
                     messages.append(message)
 
                 if message.get("content"):
@@ -203,11 +206,11 @@ class GroqClient:
 
                     if len(result) > 8000: result = result[:8000] + "\n... [Truncated] ..."
                     
-                    # --- CRITICAL FIX: INCLUDE NAME IN TOOL RESPONSE ---
+                    # MANDATORY: Correct role:tool format for Google
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call["id"],
-                        "name": name, # Google Shim REQUIRES this
+                        "name": name,
                         "content": result
                     })
                     console.print(f"[bold green]✓ Done[/bold green]")
@@ -220,7 +223,7 @@ class GroqClient:
                 raise e
         return "Max iterations reached."
         
-    def stream_chat(self, messages: List[Dict[str, str]], role: str = "coordinator"):
+    def stream_chat(self, messages: List[Dict[str, Any]], role: str = "coordinator"):
         output_chunks = []
         def callback(text):
             if text:
