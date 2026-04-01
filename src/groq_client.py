@@ -18,7 +18,7 @@ console = Console()
 
 class GroqClient:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        # 1. Load from absolute file paths
+        # Load from absolute file paths
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         key_file = REPO_ROOT / ".groq_api_key"
         if not self.api_key and key_file.exists():
@@ -29,23 +29,20 @@ class GroqClient:
         if not self.model and model_file.exists():
             self.model = model_file.read_text().strip()
         if not self.model:
-            self.model = "gemini-2.0-flash"
+            self.model = "gemini-3.1-flash-preview"
 
         self.base_url = os.environ.get("GROQ_API_URL")
         url_file = REPO_ROOT / ".groq_api_url"
         if not self.base_url and url_file.exists():
             self.base_url = url_file.read_text().strip()
         
-        # --- DEFINITIVE GEMINI OPENAI-SHIM FIX (APRIL 2026) ---
+        # --- DEFINITIVE GEMINI OPENAI-SHIM FIX ---
         if self.base_url and "generativelanguage.googleapis.com" in self.base_url:
-            # Ensure base_url ends with exactly /openai/
             if "openai" not in self.base_url:
                 if not self.base_url.endswith("/"): self.base_url += "/"
                 self.base_url += "openai/"
             elif not self.base_url.endswith("/"):
                 self.base_url += "/"
-            
-            # OpenAI shim does NOT want "models/" prefix
             if self.model.startswith("models/"):
                 self.model = self.model.replace("models/", "")
         
@@ -104,25 +101,41 @@ class GroqClient:
         headers = self._get_headers()
         payload = {"model": self.model, "messages": messages, "tools": TOOLS_METADATA, "tool_choice": "auto"}
         
-        # Construct the final endpoint URL
+        # Determine Endpoint URL
         url = self.base_url
         if not url.endswith("chat/completions"):
             if not url.endswith("/"): url += "/"
             url += "chat/completions"
 
-        for attempt in range(3):
+        # --- RESILIENCE ENGINE: RATE LIMIT FALLBACK ---
+        max_retries = 3
+        for attempt in range(max_retries):
             with httpx.Client() as client:
                 try:
                     response = client.post(url, headers=headers, json=payload, timeout=120.0)
                     if response.status_code == 400:
-                        error_body = response.text
-                        raise httpx.HTTPStatusError(f"400 Bad Request: {error_body}", request=response.request, response=response)
+                        raise httpx.HTTPStatusError(f"400 Bad Request: {response.text}", request=response.request, response=response)
                     response.raise_for_status()
                     return response.json()
                 except httpx.HTTPStatusError as e:
-                    if e.response.status_code == 429 and attempt < 2:
-                        time.sleep(3 * (attempt + 1))
-                        continue
+                    # If we hit 429 (Too Many Requests)
+                    if e.response.status_code == 429:
+                        if attempt < max_retries - 1:
+                            # Wait and retry first
+                            time.sleep(2 * (attempt + 1))
+                            continue
+                        else:
+                            # ON FINAL ATTEMPT FAIL: KICK IN FALLBACK
+                            fallback_model = "gemini-3.1-flash-preview"
+                            if self.model != fallback_model:
+                                console.print(f"\n[bold orange3]⚠️  Rate limit reached for {self.model}.[/bold orange3]")
+                                console.print(f"[bold green]🚀 Resilience Engine: Falling back to {fallback_model}...[/bold green]")
+                                self.model = fallback_model
+                                payload["model"] = fallback_model
+                                # One last try with fallback
+                                response = client.post(url, headers=headers, json=payload, timeout=120.0)
+                                response.raise_for_status()
+                                return response.json()
                     raise e
 
     def chat_with_tools(self, messages: List[Dict[str, str]], role: str = "coordinator", stream_callback=None):

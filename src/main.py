@@ -18,18 +18,22 @@ console = Console()
 # Definitive 2026 Model List
 MODEL_OPTIONS = [
     "gemini-3.1-pro-preview",
-    "gemini-3.1-pro-preview-customtools",
     "gemini-3.1-flash-preview",
     "gemini-3-deep-think-preview",
     "meta-llama/llama-4-scout-17b-16e-instruct",
-    "openai/gpt-oss-120b"
+    "openai/gpt-oss-120b",
+    "deepseek-chat"
 ]
 
 def print_banner():
     console.print(Panel.fit(
-        "[bold cyan]🤖 CLAW-TERMUX (CLAWT)[/bold cyan]\n[dim]The Elite Engineering Agent for Android[/dim]",
+        "[bold cyan]🤖 CLAW-TERMUX (CLAWT)[/bold cyan]\n"
+        "[bold white]Made by Dr. Ayush Yadav[/bold white]\n"
+        "[dim]The Elite Engineering Agent for Android[/dim]\n"
+        "[bold green]Fallback Resilience: ON[/bold green]",
         border_style="cyan",
-        padding=(1, 4)
+        padding=(1, 4),
+        title="[bold blue]v3.5 Elite[/bold blue]"
     ))
 
 def build_parser() -> argparse.ArgumentParser:
@@ -121,17 +125,9 @@ def main(argv: list[str] | None = None) -> int:
                                 console.print("[green]🔄 Reloading configuration...[/green]")
                                 client = GroqClient()
                         elif action == "model":
-                            # SAFE PICKER LOGIC: Ensure current model exists in choices
                             current_val = client.model
-                            if current_val not in MODEL_OPTIONS:
-                                current_val = MODEL_OPTIONS[0]
-                                
-                            new_model = questionary.select(
-                                "Select a Model:", 
-                                choices=MODEL_OPTIONS, 
-                                default=current_val
-                            ).ask()
-                            
+                            if current_val not in MODEL_OPTIONS: current_val = MODEL_OPTIONS[0]
+                            new_model = questionary.select("Select a Model:", choices=MODEL_OPTIONS, default=current_val).ask()
                             if new_model:
                                 (REPO_ROOT / ".groq_model").write_text(new_model)
                                 client.model = new_model
